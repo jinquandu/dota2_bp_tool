@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BP 分析辅助 — 两两关系矩阵</title>
+<style>
+  :root{
+    --bg:#0f1419; --surface:#1a2029; --surface2:#232b38; --border:#2f3a4a;
+    --text:#e4e8ed; --muted:#8a94a6; --radiant:#e74c3c; --dire:#3498db;
+    --pos:#2ecc71; --neg:#e74c3c; --accent:#f39c12;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.5;padding:16px}
+  h1{font-size:20px;margin-bottom:12px}
+  h2{font-size:15px;margin:18px 0 8px;color:var(--accent)}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--muted)}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px}
+  input[type=text],input[type=number]{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 10px;font-size:13px;width:160px}
+  input[type=range]{width:120px;vertical-align:middle}
+  button{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px 14px;cursor:pointer;font-size:13px}
+  button:hover{background:var(--border)}
+  button.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+  button.primary:hover{opacity:.9}
+  button:disabled{opacity:.4;cursor:not-allowed}
+
+  /* 阵容槽 */
+  .rosters{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .side{background:var(--surface);border-radius:8px;padding:12px;border-top:3px solid var(--radiant)}
+  .side.dire{border-top-color:var(--dire)}
+  .side h3{font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .side h3 .team{color:var(--muted);font-size:12px;font-weight:400}
+  .side h3 .team-sel{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:400;border-radius:4px;padding:3px 8px;max-width:180px}
+  .slots{display:flex;gap:8px;flex-wrap:wrap}
+  .slot{width:64px;text-align:center;position:relative;cursor:pointer;border-radius:6px;padding:4px;border:1px solid transparent}
+  .slot:hover{background:var(--surface2);border-color:var(--border)}
+  .slot.filled .x{position:absolute;top:-2px;right:-2px;background:var(--neg);color:#fff;width:16px;height:16px;border-radius:50%;font-size:10px;line-height:16px;text-align:center;cursor:pointer}
+  .slot img{width:52px;height:52px;display:block;margin:0 auto;border-radius:6px;object-fit:cover}
+  .slot .nm{font-size:10px;display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot.empty{opacity:.5}
+  .slot .ph{font-size:11px;color:var(--muted);line-height:52px}
+
+  /* 分量条 */
+  .edge-net{background:linear-gradient(135deg,#2a3340,#1f2832);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-top:12px;text-align:center}
+  .edge-net .lbl{font-size:11px;color:var(--accent);margin-bottom:2px}
+  .edge-net .num{font-size:26px;font-weight:800}
+  .edge-net .num.pos{color:var(--pos)} .edge-net .num.neg{color:var(--neg)}
+  .edges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  .edge-cell{background:var(--surface2);border-radius:6px;padding:8px}
+  .edge-cell .lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .edge-cell .num{font-size:18px;font-weight:700}
+  .edge-cell .num.pos{color:var(--pos)} .edge-cell .num.neg{color:var(--neg)}
+  .contributors{margin-top:6px;font-size:10px;color:var(--muted);line-height:1.5;max-height:80px;overflow-y:auto}
+  .contributors .cb{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .contributors .cb .v{color:var(--text);font-weight:600}
+  .contributors .cb .v.pos{color:var(--pos)} .contributors .cb .v.neg{color:var(--neg)}
+
+  /* 权重滑块 */
+  .weights{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .w-item{display:flex;align-items:center;gap:6px}
+  .w-item label{font-size:12px;color:var(--muted);min-width:70px}
+  .w-item .val{font-size:13px;font-weight:600;min-width:36px;text-align:right}
+
+  /* 矩阵区（HTML grid） */
+  #matrixWrap{background:var(--surface);border-radius:8px;padding:14px;margin-top:14px;overflow-x:auto}
+  .legend{display:flex;gap:18px;justify-content:center;margin-top:10px;font-size:11px;color:var(--muted);flex-wrap:wrap}
+  .legend .sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:middle;margin-right:4px}
+  .mgrid{display:inline-grid;margin:8px auto 0}
+  .mcell{position:relative;display:flex;align-items:center;justify-content:center;border:1px solid #0f1419;font-size:11px;text-align:center}
+  .mcell .cv{font-weight:600;z-index:1}
+  .mcell .ov-mark{position:absolute;top:1px;left:2px;color:var(--accent);font-size:8px}
+  /* +/- 微调按钮：常驻可见，+在上-在下，小尺寸，叠在格子右上角 */
+  .mcell .pm{position:absolute;top:1px;right:1px;display:flex;flex-direction:column;gap:1px;z-index:2}
+  .mcell .pm button{background:rgba(0,0,0,.7);color:#fff;border:none;width:14px;height:11px;cursor:pointer;font-size:9px;line-height:11px;padding:0;border-radius:2px;text-align:center}
+  .mcell .pm button:hover{background:var(--accent);color:#000}
+  .mhead{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:2px}
+  .mhead img{width:34px;height:34px;border-radius:4px;object-fit:cover}
+  .mhead .nm{font-size:9px;white-space:nowrap;margin-top:1px}
+  /* 行头：图标在上、名字在下（竖向） */
+  .mlabel{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px;justify-content:center}
+  .mlabel img{width:34px;height:34px;border-radius:4px;object-fit:cover;flex-shrink:0}
+  .mlabel .nm{font-size:9px;white-space:nowrap}
+  .mcorner{background:transparent}
+  .mempty{background:#141a22}
+
+  /* 候选替换面板 */
+  #candPanel{position:fixed;right:16px;top:16px;width:340px;max-height:80vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;z-index:100;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  #candPanel.show{display:block}
+  #candPanel h3{font-size:14px;margin-bottom:8px}
+  #candPanel .close{float:right;cursor:pointer;color:var(--muted);font-size:18px}
+  .cand{display:flex;align-items:center;gap:8px;padding:6px;border-radius:4px;cursor:pointer;border:1px solid transparent}
+  .cand:hover{background:var(--surface2);border-color:var(--border)}
+  .cand img{width:36px;height:50px;border-radius:3px}
+  .cand .info{flex:1}
+  .cand .info b{font-size:13px}
+  .cand .info .delta{font-size:11px;color:var(--pos)}
+  .cand .info .delta.neg{color:var(--neg)}
+  .cand .reasons{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* 覆盖编辑 */
+  .badge{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:10px;color:var(--accent);margin-left:6px}
+  /* 战队熟练度画像 */
+  .tp-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .tp-side{background:var(--surface2);border-radius:6px;padding:10px;border-top:3px solid var(--radiant)}
+  .tp-side.dire{border-top-color:var(--dire)}
+  .tp-side h4{font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .tp-side h4 .tag{font-size:10px;color:var(--muted);font-weight:400}
+  .tp-row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;font-size:12px}
+  .tp-row:hover{background:rgba(255,255,255,.03)}
+  .tp-row .nm{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+  .tp-row .nm .en{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tp-row .nm .zh{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tp-row .sc{font-weight:700;min-width:50px;text-align:right}
+  .tp-row .sc.pos{color:var(--pos)} .tp-row .sc.neg{color:var(--neg)}
+  .tp-row .meta{font-size:10px;color:var(--muted);min-width:90px;text-align:right}
+  .tp-row .bar{height:4px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden}
+  .tp-row .bar .fill{height:100%;background:var(--accent)}
+  /* 多指标行：名字 + 6 指标网格 */
+  .tp-row-multi{flex-direction:column;align-items:stretch;padding:6px;border-bottom:1px solid var(--border)}
+  .tp-row-multi .metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:4px}
+  .tp-row-multi .m{display:flex;flex-direction:column;align-items:center;background:var(--surface);border-radius:3px;padding:3px 2px;line-height:1.2}
+  .tp-row-multi .m .ml{font-size:9px;color:var(--muted)}
+  .tp-row-multi .m .mv{font-size:12px;font-weight:600}
+  .tp-row-multi .m.pos .mv{color:var(--pos)}
+  .tp-row-multi .m.neg .mv{color:var(--neg)}
+  .tp-total{display:flex;justify-content:space-between;padding:6px;margin-top:6px;border-top:1px solid var(--border);font-size:12px;font-weight:600}
+  .tp-empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+  .tp-pool{margin-top:10px;font-size:11px;color:var(--muted)}
+  .tp-pool b{color:var(--text);font-size:11px}
+  .tp-pool-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .tp-pool-list .pill{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1px 7px;font-size:10px;display:inline-flex;align-items:center;gap:3px}
+  .tp-pool-list .pill .v{font-weight:600;color:var(--accent)}
+  .tp-pool-list .pill .v.neg{color:var(--neg)}
+  .tp-unavail{background:var(--surface2);border:1px dashed var(--border);border-radius:6px;padding:20px;text-align:center;color:var(--muted);font-size:13px}
+  #editOverlay{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;z-index:200;display:none;box-shadow:0 8px 24px rgba(0,0,0,.6);min-width:280px}
+  #editOverlay.show{display:block}
+  #editOverlay label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+  #editOverlay .actions{margin-top:14px;text-align:right}
+  #editOverlay .actions button{margin-left:6px}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+
+<h1>BP 分析辅助 — 两两关系矩阵</h1>
+<div class="hint muted" id="metaHint">矩阵：对角=单点强度(胜率偏离50%)、上三角=同队协同(正=契合)、下三角=跨队克制(正=行克制列)。单元格右上角 +/- 按钮微调（功能⑥）。</div>
+
+<!-- 功能① 输入比赛号 -->
+<div class="panel">
+  <div class="row">
+    <label>选择比赛：</label>
+    <select id="matchSelect" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px;font-size:13px;max-width:420px">
+      <option value="">— 从下拉框选择一场（推荐）—</option>
+    </select>
+    <button class="primary" id="loadBtn">加载阵容</button>
+    <button id="randomBtn">随机一场</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <label>或输入 match_id：</label>
+    <input type="text" id="matchInput" placeholder="如 8753832993">
+    <span class="muted" id="matchInfo" style="margin-left:auto;font-size:12px"></span>
+  </div>
+</div>
+
+<!-- 阵容 + 功能③权重 + 功能④⑤槽位操作 -->
+<div class="panel">
+  <div class="rosters">
+    <div class="side radiant">
+      <h3><span style="color:var(--radiant)">Radiant</span><select class="team-sel" id="rTeam"></select></h3>
+      <div class="slots" id="rSlots"></div>
+    </div>
+    <div class="side dire">
+      <h3><span style="color:var(--dire)">Dire</span><select class="team-sel" id="dTeam"></select></h3>
+      <div class="slots" id="dSlots"></div>
+    </div>
+  </div>
+
+  <!-- 功能③ 自定义权重 -->
+  <h2 style="margin-top:14px">综合净优势 = a·协同 + b·克制 + c·强度</h2>
+  <div class="weights">
+    <div class="w-item"><label>a (协同)</label><input type="range" id="wA" min="-2" max="3" step="0.1" value="1"><span class="val" id="wAv">1.0</span></div>
+    <div class="w-item"><label>b (克制)</label><input type="range" id="wB" min="-2" max="3" step="0.1" value="1"><span class="val" id="wBv">1.0</span></div>
+    <div class="w-item"><label>c (强度)</label><input type="range" id="wC" min="-2" max="3" step="0.1" value="1"><span class="val" id="wCv">1.0</span></div>
+    <button id="resetW">重置 (1,1,1)</button>
+  </div>
+
+  <!-- 分量（net_edge 在上，便于一眼看综合；下三列为各分量及其主要贡献变量） -->
+  <div class="edge-net" id="netCell">
+    <div class="lbl">净优势 net_edge = a·协同 + b·克制 + c·强度</div>
+    <div class="num" id="netE">—</div>
+  </div>
+  <div class="edges">
+    <div class="edge-cell">
+      <div class="lbl">协同 syn_edge <span class="muted" style="font-size:10px">(同队契合)</span></div>
+      <div class="num" id="synE">—</div>
+      <div class="contributors" id="synContrib"></div>
+    </div>
+    <div class="edge-cell">
+      <div class="lbl">克制 cnt_edge <span class="muted" style="font-size:10px">(R克D为正)</span></div>
+      <div class="num" id="cntE">—</div>
+      <div class="contributors" id="cntContrib"></div>
+    </div>
+    <div class="edge-cell">
+      <div class="lbl">强度 power_edge <span class="muted" style="font-size:10px">(单点胜率偏离)</span></div>
+      <div class="num" id="powE">—</div>
+      <div class="contributors" id="powContrib"></div>
+    </div>
+  </div>
+  <div class="hint" id="bandLabel" style="text-align:center;margin-top:8px"></div>
+
+  <!-- 功能⑤ 撤销/重做 -->
+  <div class="row" style="margin-top:12px">
+    <button id="undoBtn">↶ 撤销</button>
+    <button id="redoBtn">↷ 重做</button>
+    <button id="resetBtn">恢复初始阵容</button>
+    <span class="muted" id="histInfo" style="font-size:12px;margin-left:auto"></span>
+  </div>
+</div>
+
+<!-- 战队熟练度画像（需求2：独立展示，不进评分） -->
+<div class="panel">
+  <h2>战队熟练度画像 <span class="muted" style="font-size:11px;font-weight:400">（TI 正赛数据，独立于评分体系，不进 net_edge）</span></h2>
+  <div id="teamsPanel"></div>
+</div>
+
+<!-- 功能① 矩阵 -->
+<div id="matrixWrap">
+  <div class="legend">
+    <span><span class="sw" style="background:#2166ac"></span>负(互斥/被克)</span>
+    <span><span class="sw" style="background:#f7f7f7"></span>中性 0</span>
+    <span><span class="sw" style="background:#b2182b"></span>正(契合/克制)</span>
+    <span class="muted">| 上三角红=同队契合强 · 左下红=Radiant英雄克制对应Dire英雄 · 悬停格子显示 +/- 微调按钮</span>
+  </div>
+  <div id="matrixGrid" class="mgrid"></div>
+</div>
+
+<!-- 功能⑥ 覆盖管理 -->
+<div class="panel">
+  <h2>关系微调覆盖表（功能⑥）<span class="badge" id="ovCount">0</span></h2>
+  <div class="row">
+    <button id="exportBtn">导出 bp_overrides.json</button>
+    <button id="importBtn">导入 JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+    <button id="clearOvBtn">清空 localStorage</button>
+    <span class="muted" style="font-size:12px">说明：双击矩阵单元格修改值 → 自动存 localStorage → 导出 JSON 后给 Python 脚本合并</span>
+  </div>
+  <div id="ovList" style="margin-top:10px;font-size:12px;max-height:120px;overflow-y:auto"></div>
+</div>
+
+<!-- 功能④ 候选替换浮层 -->
+<div id="candPanel">
+  <span class="close" onclick="document.getElementById('candPanel').classList.remove('show')">×</span>
+  <h3 id="candTitle">替换候选</h3>
+  <div id="candList"></div>
+</div>
+
+<!-- 功能⑥ 编辑浮层 -->
+<div id="editOverlay">
+  <h3 style="margin-bottom:8px">微调关系值</h3>
+  <div id="editDesc" class="muted" style="font-size:12px"></div>
+  <label>新值（覆盖计算值，留空=恢复计算）</label>
+  <input type="text" id="editVal" style="width:100%">
+  <div class="hint" id="editCurVal"></div>
+  <div class="actions">
+    <button id="editReset">恢复计算值</button>
+    <button id="editCancel">取消</button>
+    <button class="primary" id="editSave">保存</button>
+  </div>
+</div>
+
+<!-- 数据文件（与 html 同目录，迁移时一起带走）。用 <script> 加载规避 file:// 的 CORS 拦截 -->
+<script src="bp_data.js"></script>
+<script src="bp_rosters.js"></script>
+<script src="bp_teams.js"></script>
+
+<script>
+/* ============================== 数据（由同目录 .js 文件提供） ============================== */
+if(typeof BP_DATA==='undefined' || typeof BP_ROSTERS==='undefined'){
+  document.body.innerHTML='<div style="padding:40px;color:#e74c3c;font-size:16px">⚠ 数据文件缺失！请确保 <b>bp_data.js</b>、<b>bp_rosters.js</b>、<b>bp_teams.js</b> 与本 html 在同一目录。</div>';
+  throw new Error('数据文件缺失');
+}
+const DATA = BP_DATA;            // {heroes, syn, cnt, meta}
+const ROSTERS = BP_ROSTERS;      // {match_id: {radiant,dire,...}}
+const TEAMS = (typeof BP_TEAMS==='undefined') ? {_meta:{available:false}} : BP_TEAMS;  // {team_name:{heroes:{id:{n,win_rate,score}}}}
+// TI 16 战队的 canonical 名（直接读 bp_teams.js 的 _meta，避免 JSON 反序列化后别名引用失效）
+const TI_TEAMS_LIST = (TEAMS._meta && TEAMS._meta.canonical_teams) || [];
+const ALIAS_TO_CANONICAL = (TEAMS._meta && TEAMS._meta.alias_to_canonical) || {};
+const HEROES = {};
+const HERO_LIST = [];
+DATA.heroes.forEach(h=>{HEROES[h.id]=h; HERO_LIST.push(h);});
+HERO_LIST.sort((a,b)=>a.id-b.id);
+// 填充数据来源提示
+(function(){ const el=document.getElementById('metaHint'); if(el && DATA.meta && DATA.meta.source){ const clip=DATA.meta.clip!==undefined?` | 极值已 clip ±${DATA.meta.clip}`:''; el.textContent='数据：'+DATA.meta.source+clip+' | '+el.textContent; } })();
+
+/* 覆盖表（功能⑥）：localStorage 持久化。{syn,cnt} 为英雄对覆盖，{power} 为单英雄 baseline 覆盖 */
+const OVERRIDES_KEY = 'bp_analysis_overrides';
+let overrides = loadOverrides();
+function loadOverrides(){
+  try{ const d=JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {}; return {syn:d.syn||{},cnt:d.cnt||{},power:d.power||{}}; }
+  catch(e){ return {syn:{},cnt:{},power:{}}; }
+}
+function saveOverrides(){ localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides)); }
+
+/* 查值：优先用覆盖，否则用计算值 */
+function synVal(a,b){
+  const k = a<b ? a+','+b : b+','+a;
+  const ovK = a<b ? a+','+b : b+','+a;
+  if(overrides.syn[ovK]!==undefined) return overrides.syn[ovK];
+  return DATA.syn[k] || 0;
+}
+function cntVal(a,b){
+  if(overrides.cnt[a+','+b]!==undefined) return overrides.cnt[a+','+b];
+  return DATA.cnt[a+','+b] || 0;
+}
+/* power：覆盖存的是覆盖后的 power 值（baseline-0.5）；无覆盖则用计算值 */
+function powerVal(h){
+  const k=String(h);
+  if(overrides.power[k]!==undefined) return overrides.power[k];
+  return (HEROES[h].baseline - 0.5);
+}
+
+/* ============================== 状态机 ============================== */
+const state = {
+  radiant: [],      // [heroId x5]
+  dire: [],
+  initial: null,    // 初始阵容快照 {radiant,dire}
+  history: [],      // [{side,pos,old,new}] 操作栈
+  future: [],       // redo 栈
+  selected: null,   // 当前选中的槽位 {side,pos}（用于功能④）
+  meta: null,       // 当前比赛信息
+};
+const W = {a:1, b:1, c:1};  // 权重
+
+/* ============================== 阵容评估 ============================== */
+function computeEdges(rad, dire){
+  // 协同：每方 C(5,2)=10 对，记录每对贡献
+  let synA=0, synE=0;
+  const synPairs=[];
+  for(let i=0;i<rad.length;i++)for(let j=i+1;j<rad.length;j++){
+    const v=synVal(rad[i],rad[j]); synA+=v;
+    synPairs.push({a:rad[i],b:rad[j],v,side:'R'});
+  }
+  for(let i=0;i<dire.length;i++)for(let j=i+1;j<dire.length;j++){
+    const v=synVal(dire[i],dire[j]); synE+=v;
+    synPairs.push({a:dire[i],b:dire[j],v,side:'D'});
+  }
+  // 克制：5x5，双向（R克D 正向贡献，D克R 负向贡献）
+  let cntA=0, cntE=0;
+  const cntPairs=[];
+  for(const a of rad)for(const b of dire){
+    const v=cntVal(a,b); cntA+=v;
+    cntPairs.push({a,b,v,dir:'R克D'});
+  }
+  for(const a of dire)for(const b of rad){
+    const v=cntVal(a,b); cntE+=v;
+    cntPairs.push({a,b,v,dir:'D克R'});
+  }
+  // 强度
+  let pA=0,pE=0;
+  const powItems=[];
+  for(const h of rad){ const v=powerVal(h); pA+=v; powItems.push({h,v,side:'R'}); }
+  for(const h of dire){ const v=powerVal(h); pE+=v; powItems.push({h,v,side:'D'}); }
+  const synEdge=synA-synE, cntEdge=cntA-cntE, powerEdge=pA-pE;
+  const netEdge = W.a*synEdge + W.b*cntEdge + W.c*powerEdge;
+  return {synA,synE,synEdge,synPairs, cntA,cntE,cntEdge,cntPairs, pA,pE,powerEdge,powItems, netEdge};
+}
+function bandLabel(net){
+  const a=Math.abs(net), who=net>0?"Radiant（己方）":"Dire（敌方）";
+  if(a>0.8) return "压倒性优势 · "+who;
+  if(a>0.5) return "明显优势 · "+who;
+  if(a>0.3) return "倾向优势 · "+who;
+  if(a>0.1) return "微弱倾向 · "+who;
+  return "势均力敌（评估不可判）";
+}
+
+/* ============================== 渲染 ============================== */
+function heroImg(id){
+  return HEROES[id] ? HEROES[id].icon : "";
+}
+function heroImgTag(id){
+  const h=HEROES[id]; if(!h) return "";
+  const letter=(h.name||"?").charAt(0).toUpperCase();
+  const ph="data:image/svg+xml;utf8,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52"><rect width="100%" height="100%" fill="#2a3142"/><text x="50%" y="55%" font-size="26" fill="#5b6b86" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle">'+letter+'</text></svg>');
+  const onerr=`onerror="var t=+this.dataset.try||0;t++;this.dataset.try=t;if(t===1&&this.dataset.fb)this.src=this.dataset.fb;else if(t===2)this.src='${ph}';this.onerror=null;"`;
+  return `<img src="${h.icon}" data-fb="${h.icon2||''}" data-try="0" ${onerr}>`;
+}
+function hname(id){ return HEROES[id]?HEROES[id].name:("#"+id); }
+function setMatchInfo(text){ const el=document.getElementById('matchInfo'); if(el) el.textContent=text; }
+
+function loadMatch(mid){
+  mid = String(mid==null?'':mid).trim();
+  if(!mid){ setMatchInfo('请输入或选择比赛 match_id'); return false; }
+  const r = ROSTERS[mid];
+  if(!r){
+    const all = Object.keys(ROSTERS);
+    const range = all.length ? `${all[0]} ~ ${all[all.length-1]}` : '空';
+    setMatchInfo(`✗ 未找到 match_id="${mid}"。当前数据集共 ${all.length} 场（${range}），范围 ≥2026-04-01 的 Tier1 比赛。请用下拉框选择或点"随机一场"。`);
+    return false;
+  }
+  state.radiant = [...r.radiant];
+  state.dire = [...r.dire];
+  state.initial = {radiant:[...r.radiant], dire:[...r.dire]};
+  state.history=[]; state.future=[];
+  state.meta = r;
+  // 战队下拉：填充 TI 16 队，默认选该场实际战队名
+  setTeamSelect('rTeam', r.radiant_name);
+  setTeamSelect('dTeam', r.dire_name);
+  state.rTeam = r.radiant_name;
+  state.dTeam = r.dire_name;
+  const dt = new Date(r.start_time*1000).toISOString().slice(0,10);
+  document.getElementById('matchInfo').textContent = `${r.league_name} · ${r.radiant_name} vs ${r.dire_name} · ${dt} · ${r.radiant_win?'R胜':'D胜'}`;
+  rerender();
+  return true;
+}
+
+/* 填充战队下拉(16 TI 队),选中指定队名;切换时更新 state 并重画像 */
+function setTeamSelect(elId, selected){
+  const sel = document.getElementById(elId);
+  sel.innerHTML = '';
+  if(!TI_TEAMS_LIST.length){
+    const opt=document.createElement('option'); opt.value=''; opt.textContent='(熟练度数据不可用)'; sel.appendChild(opt); return;
+  }
+  TI_TEAMS_LIST.forEach(name=>{
+    const opt=document.createElement('option'); opt.value=name; opt.textContent=name;
+    sel.appendChild(opt);
+  });
+  // 若 selected 是别名，归一到 canonical（bp_teams.js 的 alias_to_canonical 提供）
+  if(selected && ALIAS_TO_CANONICAL[selected]){
+    selected = ALIAS_TO_CANONICAL[selected];
+  }
+  sel.value = TI_TEAMS_LIST.includes(selected) ? selected : (TI_TEAMS_LIST[0]||'');
+  sel.onchange = ()=>{
+    if(elId==='rTeam') state.rTeam = sel.value;
+    else state.dTeam = sel.value;
+    renderTeamsPanel();
+  };
+}
+
+function rerender(){
+  renderSlots();
+  renderEdges();
+  renderMatrix();
+  renderHistInfo();
+  renderTeamsPanel();
+}
+
+/* ============================== 战队熟练度画像（需求2，独立展示，不进评分） ============================== */
+function renderTeamsPanel(){
+  const el = document.getElementById('teamsPanel');
+  if(!el) return;
+  // 中文名辅助（无 cn 字段时回退到英文名）
+  const hcn = id => { const h=HEROES[id]; return h && h.cn ? h.cn : hname(id); };
+  // 数据源不可用：整体降级提示
+  if(!TEAMS._meta || !TEAMS._meta.available){
+    el.innerHTML = '<div class="tp-unavail">⚠ 熟练度数据不可用（bp_teams.js 缺失或未生成）。跑 <code>compute_edges.py</code> 可生成。</div>';
+    return;
+  }
+  // 战队名从下拉状态取（用户可手动切换 TI 战队），而非从 meta 固定
+  const rn = state.rTeam || '';
+  const dn = state.dTeam || '';
+  const rad = rn && TEAMS[rn];
+  const dire = dn && TEAMS[dn];
+
+  // 一侧的渲染：阵容对照 + 英雄池画像
+  const renderSide = (name, data, side) => {
+    const isR = side==='radiant';
+    const arr = state[side].filter(x=>x!==undefined);
+    if(!data){
+      return `<div class="tp-side ${isR?'':'dire'}">
+        <h4><span>${isR?'Radiant':'Dire'}</span><span class="tag">${name||'—'} · 无熟练度数据</span></h4>
+        <div class="tp-empty">⚠ "${name||''}" 不在 TI 熟练度数据集中（仅覆盖 TI 正赛 16 队）</div>
+      </div>`;
+    }
+    // 本场阵容熟练度对照（多指标：场次/全量胜率/近5胜率/经济分位/致死分位/熟练度）
+    // 小指标块：label + value，紧凑网格
+    const metric = (label, val, cls='') => `<div class="m ${cls}"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
+    const rows = arr.map(h=>{
+      const info = data.heroes[String(h)];
+      if(!info) return `<div class="tp-row"><div class="nm"><span class="en">${hname(h)}</span><span class="zh">${hcn(h)}</span></div><div class="meta">无熟练度记录</div></div>`;
+      // 熟练度配色：≥75 绿(熟练)、60-75 中性、<60 红(生疏)
+      const profCls = info.prof>=75?'pos':(info.prof<60?'neg':'');
+      return `<div class="tp-row tp-row-multi">
+        <div class="nm"><span class="en">${hname(h)}</span><span class="zh">${hcn(h)}</span></div>
+        <div class="metrics">
+          ${metric('场次', info.n)}
+          ${metric('全量胜率', info.wr_all.toFixed(0)+'%')}
+          ${metric('近5胜率', info.wr.toFixed(0)+'%', info.wr>=50?'pos':'neg')}
+          ${metric('经济分位', info.eco.toFixed(0))}
+          ${metric('致死分位', info.lethal.toFixed(0))}
+          ${metric('熟练度', info.prof.toFixed(1), profCls)}
+        </div>
+      </div>`;
+    }).join('');
+    // 该方熟练度均值（prof 已是 0-100，求均值直观）
+    const profs = arr.map(h=>data.heroes[String(h)]).filter(x=>x).map(x=>x.prof);
+    const avgProf = profs.length ? (profs.reduce((a,b)=>a+b,0)/profs.length) : 0;
+    const avgCls = avgProf>=75?'pos':(avgProf<60?'neg':'');
+    const covered = profs.length;
+    const total = `<div class="tp-total"><span>阵容熟练度均值（${covered}/5 有数据）</span><span class="sc ${avgCls}" style="min-width:auto">${avgProf.toFixed(1)}</span></div>`;
+    // 英雄池画像：Top6 熟练英雄（按 prof 排序，中文名）
+    const pool = Object.entries(data.heroes).sort((a,b)=>b[1].prof-a[1].prof).slice(0,6);
+    const poolHtml = pool.map(([hid,v])=>{
+      const cls = v.prof>=75?'':(v.prof<60?'neg':'');
+      return `<span class="pill">${hcn(hid)} <span class="v ${cls}">${v.prof.toFixed(0)}</span></span>`;
+    }).join('');
+    return `<div class="tp-side ${isR?'':'dire'}">
+      <h4><span style="color:${isR?'var(--radiant)':'var(--dire)'}">${isR?'Radiant':'Dire'}</span><span class="tag">${name}</span></h4>
+      <div class="tp-list">${rows}</div>
+      ${total}
+      <div class="tp-pool"><b>熟练度英雄池 Top6</b><div class="tp-pool-list">${poolHtml}</div></div>
+    </div>`;
+  };
+
+  el.innerHTML = `<div class="tp-wrap">${renderSide(rn, rad, 'radiant')}${renderSide(dn, dire, 'dire')}</div>`;
+}
+
+function renderSlots(){
+  for(const side of ['radiant','dire']){
+    const el = document.getElementById(side==='radiant'?'rSlots':'dSlots');
+    const arr = state[side];
+    el.innerHTML='';
+    for(let i=0;i<5;i++){
+      const id = arr[i];
+      const div = document.createElement('div');
+      div.className = 'slot ' + (id!==undefined?'filled':'empty');
+      if(id!==undefined){
+        div.innerHTML = `${heroImgTag(id)}<span class="nm">${hname(id)}</span>`;
+        // 点击槽位：弹换人推荐（功能④）
+        div.onclick = ()=>{ state.selected={side,pos:i}; showCandidates(side,i); };
+        const x=document.createElement('span'); x.className='x'; x.textContent='✕';
+        x.onclick=(e)=>{ e.stopPropagation(); removeHero(side,i); };
+        div.appendChild(x);
+      }else{
+        div.innerHTML = `<span class="ph">+ 选择</span>`;
+        // 空位：弹英雄选择器（功能①补选），不受阵容是否完整限制
+        div.onclick = ()=>{ state.selected={side,pos:i}; openHeroPicker(side,i); };
+      }
+      el.appendChild(div);
+    }
+  }
+}
+
+function renderEdges(){
+  const rc = state.radiant.filter(x=>x!==undefined).length;
+  const dc = state.dire.filter(x=>x!==undefined).length;
+  if(rc<5 || dc<5){
+    ['synE','cntE','powE','netE'].forEach(id=>document.getElementById(id).textContent='—');
+    ['synContrib','cntContrib','powContrib'].forEach(id=>document.getElementById(id).innerHTML='');
+    document.getElementById('bandLabel').textContent = `阵容不完整 (R:${rc}/5, D:${dc}/5)`;
+    return;
+  }
+  const e = computeEdges(state.radiant, state.dire);
+  const setNum=(id,v)=>{const el=document.getElementById(id); el.textContent=(v>=0?'+':'')+v.toFixed(3); el.className='num '+(v>=0?'pos':'neg');};
+  setNum('synE', e.synEdge);
+  setNum('cntE', e.cntEdge);
+  setNum('powE', e.powerEdge);
+  setNum('netE', e.netEdge);
+  document.getElementById('bandLabel').innerHTML = `<b>${bandLabel(e.netEdge)}</b>`;
+
+  // 列出影响变量（按绝对值降序，取 Top，正负分别标色）
+  const fmtPair = (p, label) => {
+    const cls = p.v>=0?'pos':'neg';
+    return `<span class="cb">[${p.side||p.dir}] ${hname(p.a)}×${hname(p.b)} <span class="v ${cls}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
+  };
+  const fmtItem = (p) => {
+    const cls = p.v>=0?'pos':'neg';
+    return `<span class="cb">[${p.side}] ${hname(p.h)} <span class="v ${cls}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
+  };
+  // 协同：每对显示（R为正贡献，D为负贡献，已含在 synEdge 里）
+  const synSorted = e.synPairs.slice().sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)).slice(0,8);
+  document.getElementById('synContrib').innerHTML = synSorted.map(fmtPair).join('');
+  // 克制：R克D为正、D克R为负，分别显示
+  const cntSorted = e.cntPairs.slice().sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)).slice(0,8);
+  document.getElementById('cntContrib').innerHTML = cntSorted.map(fmtPair).join('');
+  // 强度
+  const powSorted = e.powItems.slice().sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+  document.getElementById('powContrib').innerHTML = powSorted.map(fmtItem).join('');
+}
+
+/* ============================== 矩阵绘制（功能①，HTML grid） ============================== */
+function renderMatrix(){
+  const grid = document.getElementById('matrixGrid');
+  grid.innerHTML = '';
+  const rad = state.radiant.filter(x=>x!==undefined);
+  const dire = state.dire.filter(x=>x!==undefined);
+  if(rad.length<5 || dire.length<5){
+    grid.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">双方阵容完整后显示矩阵</div>';
+    return;
+  }
+  // 阵营顺序：D 在前(0-4)、R 在后(5-9)
+  // → 上三角 i<j 同方=协同(左上D协同块/右下R协同块)
+  // → 下三角 i>j 跨方=行克列，左下角=R行D列=R克D(正值=红)
+  const heroes = [...dire, ...rad];
+  const sd = ['D','D','D','D','D','R','R','R','R','R'];
+  const n = heroes.length;
+  const CELL = 60;       // 单元格像素
+  const HEAD = 56;       // 表头(图标+名)像素
+
+  // vmax（协同/克制/强度统一）
+  let vmax = 0.2;
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+    if(i===j) vmax=Math.max(vmax,Math.abs(powerVal(heroes[i])));
+    else if(i<j && sd[i]===sd[j]) vmax=Math.max(vmax,Math.abs(synVal(heroes[i],heroes[j])));
+    else if(i>j && sd[i]!==sd[j]) vmax=Math.max(vmax,Math.abs(cntVal(heroes[i],heroes[j])));
+  }
+  vmax = Math.max(vmax, 0.3);
+
+  // RdBu: 负=蓝#2166ac, 0=#f7f7f7, 正=红#b2182b
+  function colorFor(v){
+    const t = Math.max(-1, Math.min(1, v/vmax));
+    const I=(a,b,f)=>Math.round(a+(b-a)*f);
+    if(t>=0) return `rgb(${I(247,178,t)},${I(247,24,t)},${I(247,43,t)})`;
+    const f=-t; return `rgb(${I(247,33,f)},${I(247,102,f)},${I(247,172,f)})`;
+  }
+
+  // 布局：(n+1)×(n+1) grid，第0行/列为表头
+  grid.style.gridTemplateColumns = `${HEAD}px repeat(${n}, ${CELL}px)`;
+  grid.style.gridTemplateRows = `${HEAD}px repeat(${n}, ${CELL}px)`;
+
+  // 单元格取值逻辑
+  function cellInfo(i, j){  // i,j 是英雄索引(0-based)
+    if(i===j) return {type:'power', v:powerVal(heroes[i]), a:heroes[i]};  // a=hero_id, 覆盖键为单英雄
+    if(i<j && sd[i]===sd[j]) return {type:'syn', v:synVal(heroes[i],heroes[j]), a:Math.min(heroes[i],heroes[j]), b:Math.max(heroes[i],heroes[j])};
+    if(i>j && sd[i]!==sd[j]) return {type:'cnt', v:cntVal(heroes[i],heroes[j]), a:heroes[i], b:heroes[j]};
+    return {type:'empty'};
+  }
+
+  // 头部渲染（图标+名字）
+  const headTag = (h) => {
+    const c = HEROES[h] ? (HEROES[h].attr==='str'?'#e74c3c':HEROES[h].attr==='agi'?'#27ae60':HEROES[h].attr==='int'?'#3498db':'#95a5a6') : '#666';
+    return `<div class="mhead"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm">${hname(h)}</div></div>`;
+  };
+  const rowTag = (h) => {
+    const c = HEROES[h] ? (HEROES[h].attr==='str'?'#e74c3c':HEROES[h].attr==='agi'?'#27ae60':HEROES[h].attr==='int'?'#3498db':'#95a5a6') : '#666';
+    return `<div class="mlabel"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm">${hname(h)}</div></div>`;
+  };
+
+  // (0,0) 角落
+  const corner = document.createElement('div'); corner.className='mcell mcorner';
+  corner.innerHTML='<span style="font-size:9px;color:var(--muted)">行↓克→列</span>';
+  grid.appendChild(corner);
+  // 列头 (j=1..n → hero index 0..n-1)
+  for(let j=0;j<n;j++){
+    const el=document.createElement('div'); el.className='mcell mcorner';
+    el.innerHTML=headTag(heroes[j]);
+    el.style.borderColor = sd[j]==='R'?'var(--radiant)':'var(--dire)';
+    grid.appendChild(el);
+  }
+  // 每行
+  for(let i=0;i<n;i++){
+    // 行头
+    const rh=document.createElement('div'); rh.className='mcell mcorner';
+    rh.innerHTML=rowTag(heroes[i]);
+    rh.style.borderColor = sd[i]==='R'?'var(--radiant)':'var(--dire)';
+    grid.appendChild(rh);
+    // 单元格
+    for(let j=0;j<n;j++){
+      const info = cellInfo(i,j);
+      const cell=document.createElement('div');
+      cell.className='mcell';
+      if(info.type==='empty'){
+        cell.classList.add('mempty');
+      }else{
+        cell.style.background = colorFor(info.v);
+        // 覆盖标记：power 键为单 hero_id，syn/cnt 为英雄对
+        const ovKey = info.type==='power' ? String(info.a) : (info.a+','+info.b);
+        const isOv = overrides[info.type][ovKey]!==undefined;
+        // power 单元格显示胜率%（power+0.5）；其余显示 ±delta
+        const txt = info.type==='power'
+          ? `${((info.v+0.5)*100).toFixed(0)}%`
+          : `${info.v>=0?'+':''}${info.v.toFixed(2)}`;
+        const dark = Math.abs(info.v/vmax)>0.55;
+        cell.innerHTML = `${isOv?'<span class="ov-mark">✎</span>':''}<span class="cv" style="color:${dark?'#fff':'#1c1e1f'}">${txt}</span>`;
+        // 功能②：+/- 微调按钮（power/syn/cnt 均可）。+在上、-在下，常驻可见
+        const pm=document.createElement('div'); pm.className='pm';
+        pm.innerHTML='<button data-d="+1" title="+0.01">＋</button><button data-d="-1" title="-0.01">－</button>';
+        pm.querySelectorAll('button').forEach(b=>{
+          b.onclick=(ev)=>{ ev.stopPropagation(); nudgeCell(info, parseInt(b.dataset.d)); };
+        });
+        cell.appendChild(pm);
+      }
+      grid.appendChild(cell);
+    }
+  }
+}
+
+/* 功能②：单元格 +/- 微调（+0.01 / -0.01）→ 写入覆盖表 → 重绘 */
+function nudgeCell(info, dir){
+  const step = dir*0.01;
+  // power 的覆盖键是单个 hero_id；syn/cnt 是英雄对 "a,b"
+  const key = info.type==='power' ? String(info.a) : (info.a+','+info.b);
+  const cur = overrides[info.type][key]!==undefined ? overrides[info.type][key] : info.v;
+  let nv = Math.round((cur+step)*100)/100;
+  // 若微调后等于计算值，则删除覆盖（恢复计算）
+  if(Math.abs(nv-info.v)<0.0001){ delete overrides[info.type][key]; }
+  else { overrides[info.type][key]=nv; }
+  saveOverrides();
+  rerender();
+  renderOvList();
+}
+
+/* ============================== 功能①补选 / 功能④ 换人 ============================== */
+// 英雄选择器（空位补选，不受阵容完整性限制）
+function openHeroPicker(side, pos){
+  const isR = side==='radiant';
+  const taken = new Set([...state.radiant.filter(x=>x!==undefined), ...state.dire.filter(x=>x!==undefined)]);
+  document.getElementById('candTitle').innerHTML = `为 ${isR?'Radiant':'Dire'} 第${pos+1}位 选择英雄`;
+  const list = document.getElementById('candList');
+  list.innerHTML = '';
+  // 搜索框
+  const searchWrap = document.createElement('div');
+  searchWrap.style.cssText='margin-bottom:8px';
+  searchWrap.innerHTML = `<input type="text" id="pickerSearch" placeholder="搜索英雄名/拼音..." style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px;font-size:13px">`;
+  list.appendChild(searchWrap);
+  const grid = document.createElement('div');
+  grid.id='pickerGrid';
+  grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:4px;max-height:50vh;overflow-y:auto';
+  list.appendChild(grid);
+  const render = (kw='')=>{
+    grid.innerHTML='';
+    HERO_LIST.filter(h=>!taken.has(h.id) && (hname(h.id).toLowerCase().includes(kw.toLowerCase()) || h.slug.toLowerCase().includes(kw.toLowerCase())))
+      .forEach(h=>{
+        const c=document.createElement('div');
+        c.className='cand'; c.style.cssText='flex-direction:column;text-align:center;padding:4px';
+        c.innerHTML=`${heroImgTag(h.id).replace('width="52" height="52"','width="44" height="44"')}<div style="font-size:10px;margin-top:2px">${hname(h.id).slice(0,8)}</div>`;
+        c.onclick=()=>{ pickHero(side,pos,h.id); document.getElementById('candPanel').classList.remove('show'); };
+        grid.appendChild(c);
+      });
+  };
+  render();
+  document.getElementById('pickerSearch').oninput=e=>render(e.target.value);
+  document.getElementById('candPanel').classList.add('show');
+}
+function pickHero(side,pos,newId){
+  // 空位补选：记录为 remove 的逆操作（old=undefined）
+  state.history.push({type:'pick', side, pos, old:undefined, new:newId});
+  state.future=[];
+  state[side][pos]=newId;
+  rerender();
+}
+
+/* 功能④ 换人推荐 */
+function showCandidates(side, pos){
+  if(state.radiant.filter(x=>x!==undefined).length<5 || state.dire.filter(x=>x!==undefined).length<5){
+    return; // 阵容不全不推
+  }
+  const old = state[side][pos];
+  const taken = new Set([...state.radiant.filter(x=>x!==undefined), ...state.dire.filter(x=>x!==undefined)]);
+  const base = computeEdges(state.radiant, state.dire);
+  const isR = side==='radiant';
+  const cands = [];
+  for(const h of HERO_LIST){
+    if(taken.has(h.id) || h.id===old) continue;
+    const newR = [...state.radiant], newD = [...state.dire];
+    if(isR) newR[pos]=h.id; else newD[pos]=h.id;
+    const after = computeEdges(newR, newD);
+    // 改善：R方希望 net 升，D方希望 net 降
+    const gain = isR ? (after.netEdge - base.netEdge) : (base.netEdge - after.netEdge);
+    cands.push({
+      id:h.id, net:after.netEdge, gain,
+      dsyn:after.synEdge-base.synEdge, dcnt:after.cntEdge-base.cntEdge, dpow:after.powerEdge-base.powerEdge
+    });
+  }
+  cands.sort((a,b)=>b.gain-a.gain);
+  const top = cands.slice(0,8);
+
+  document.getElementById('candTitle').innerHTML = `替换 ${isR?'Radiant':'Dire'} 第${pos+1}位 <b>${hname(old)}</b>（当前 net ${base.netEdge>=0?'+':''}${base.netEdge.toFixed(3)}）`;
+  const list = document.getElementById('candList');
+  list.innerHTML='';
+  top.forEach((c,i)=>{
+    const div=document.createElement('div');
+    div.className='cand';
+    let rs=[];
+    if(Math.abs(c.dsyn)>0.005) rs.push(`协同${c.dsyn>=0?'+':''}${c.dsyn.toFixed(3)}`);
+    if(Math.abs(c.dcnt)>0.005) rs.push(`克制${c.dcnt>=0?'+':''}${c.dcnt.toFixed(3)}`);
+    if(Math.abs(c.dpow)>0.005) rs.push(`强度${c.dpow>=0?'+':''}${c.dpow.toFixed(3)}`);
+    div.innerHTML = `${heroImgTag(c.id).replace('width="48" height="66"','width="36" height="50"')}<div class="info"><b>#${i+1} ${hname(c.id)}</b> <span class="delta ${c.gain<0?'neg':''}">Δnet ${c.gain>=0?'+':''}${c.gain.toFixed(3)}</span><div class="reasons">${rs.join(' · ')||'综合微调'}</div></div>`;
+    div.onclick=()=>{ applyReplace(side,pos,c.id); document.getElementById('candPanel').classList.remove('show'); };
+    list.appendChild(div);
+  });
+  document.getElementById('candPanel').classList.add('show');
+}
+function applyReplace(side,pos,newId){
+  const old = state[side][pos];
+  state.history.push({type:'replace', side, pos, old, new:newId});
+  state.future=[];
+  state[side][pos]=newId;
+  rerender();
+}
+
+/* 功能⑤ 撤销/重做/移除/重置 */
+function removeHero(side,pos){
+  if(state[side][pos]===undefined) return;
+  state.history.push({type:'remove', side, pos, old:state[side][pos]});
+  state.future=[];
+  state[side][pos]=undefined;
+  rerender();
+}
+function undo(){
+  const last = state.history.pop();
+  if(!last) return;
+  // replace/remove/pick 统一：回退到 old（pick 的 old=undefined → 变空位）
+  state[last.side][last.pos]=last.old;
+  state.future.push(last);
+  rerender();
+}
+function redo(){
+  const nxt = state.future.pop();
+  if(!nxt) return;
+  // replace/pick：恢复到 new；remove：置空
+  if(nxt.type==='remove'){ state[nxt.side][nxt.pos]=undefined; }
+  else { state[nxt.side][nxt.pos]=nxt.new; }
+  state.history.push(nxt);
+  rerender();
+}
+function resetInitial(){
+  if(!state.initial) return;
+  state.radiant=[...state.initial.radiant];
+  state.dire=[...state.initial.dire];
+  state.history=[]; state.future=[];
+  rerender();
+}
+function renderHistInfo(){
+  document.getElementById('histInfo').textContent = `操作历史 ${state.history.length} 步 / 可重做 ${state.future.length} 步`;
+  document.getElementById('undoBtn').disabled = state.history.length===0;
+  document.getElementById('redoBtn').disabled = state.future.length===0;
+}
+
+/* ============================== 功能⑥ 覆盖管理 ============================== */
+// 单元格微调现由 +/- 按钮（nudgeCell）处理；editOverlay 保留供精确输入（从覆盖列表入口）
+let editCtx = null;  // {type:'syn'|'cnt', a, b}
+function openEdit(show){
+  document.getElementById('editOverlay').classList.toggle('show', show);
+}
+function saveEdit(){
+  if(!editCtx) return;
+  const raw = document.getElementById('editVal').value.trim();
+  if(raw===''){
+    delete overrides[editCtx.type][editCtx.key];
+  }else{
+    const v = parseFloat(raw);
+    if(isNaN(v)){ alert('请输入数字'); return; }
+    overrides[editCtx.type][editCtx.key]=v;
+  }
+  saveOverrides();
+  editCtx=null;
+  openEdit(false);
+  rerender();
+  renderOvList();
+}
+function resetEdit(){
+  if(!editCtx) return;
+  delete overrides[editCtx.type][editCtx.key];
+  saveOverrides();
+  editCtx=null; openEdit(false);
+  rerender(); renderOvList();
+}
+
+/* 覆盖表管理 */
+function renderOvList(){
+  const synKeys=Object.keys(overrides.syn), cntKeys=Object.keys(overrides.cnt), powKeys=Object.keys(overrides.power);
+  const total = synKeys.length+cntKeys.length+powKeys.length;
+  document.getElementById('ovCount').textContent=total;
+  const el=document.getElementById('ovList');
+  if(total===0){ el.innerHTML='<span class="muted">无覆盖（矩阵单元格右上角 +/- 按钮微调，每步 ±0.01；含对角线胜率）</span>'; return; }
+  let html='';
+  for(const k of synKeys){
+    const [a,b]=k.split(',').map(Number);
+    html+=`<div>协同 ${hname(a)}+${hname(b)} = <b>${overrides.syn[k]}</b> <a href="#" onclick="editFromList('syn','${k}',${a},${b});return false" style="color:var(--accent)">改</a> <a href="#" onclick="delOv('syn','${k}');return false" style="color:var(--neg)">✕</a></div>`;
+  }
+  for(const k of cntKeys){
+    const [a,b]=k.split(',').map(Number);
+    html+=`<div>克制 ${hname(a)}克${hname(b)} = <b>${overrides.cnt[k]}</b> <a href="#" onclick="editFromList('cnt','${k}',${a},${b});return false" style="color:var(--accent)">改</a> <a href="#" onclick="delOv('cnt','${k}');return false" style="color:var(--neg)">✕</a></div>`;
+  }
+  for(const k of powKeys){
+    const h=Number(k);
+    const wr=((overrides.power[k]+0.5)*100).toFixed(1);
+    html+=`<div>胜率 ${hname(h)} = <b>${wr}%</b> <a href="#" onclick="editFromList('power','${k}',${h});return false" style="color:var(--accent)">改</a> <a href="#" onclick="delOv('power','${k}');return false" style="color:var(--neg)">✕</a></div>`;
+  }
+  el.innerHTML=html;
+}
+function editFromList(type,key,a,b){
+  const curVal = overrides[type][key];
+  const lbl = type==='syn' ? `同队协同 ${hname(a)} + ${hname(b)}`
+           : type==='cnt' ? `跨队克制 ${hname(a)} 克制 ${hname(b)}`
+           : `单点胜率 ${hname(a)}（当前 ${(curVal+0.5)*100}% / power=${curVal}）`;
+  document.getElementById('editDesc').innerHTML=`${lbl}`;
+  document.getElementById('editCurVal').textContent = `已有覆盖值 ${curVal}`;
+  document.getElementById('editVal').value = curVal.toFixed(3);
+  editCtx = {type, key, a};
+  openEdit(true);
+}
+function delOv(type,key){ delete overrides[type][key]; saveOverrides(); rerender(); renderOvList(); }
+
+function exportOverrides(){
+  const blob=new Blob([JSON.stringify(overrides,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='bp_overrides.json'; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importOverrides(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const d=JSON.parse(reader.result);
+      overrides = {syn:d.syn||{}, cnt:d.cnt||{}, power:d.power||{}};
+      saveOverrides(); rerender(); renderOvList();
+      alert('导入成功');
+    }catch(e){ alert('JSON 解析失败'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================== 事件绑定 ============================== */
+document.getElementById('loadBtn').onclick=()=>{
+  const sel = document.getElementById('matchSelect');
+  const inp = document.getElementById('matchInput').value.trim();
+  // 下拉框优先，其次输入框
+  const mid = sel.value || inp;
+  if(!mid){ setMatchInfo('请从下拉框选择，或在输入框填写 match_id'); return; }
+  loadMatch(mid);
+};
+document.getElementById('matchSelect').onchange=e=>{
+  if(e.target.value){ document.getElementById('matchInput').value=''; loadMatch(e.target.value); }
+};
+document.getElementById('randomBtn').onclick=()=>{
+  const keys=Object.keys(ROSTERS);
+  const mid=keys[Math.floor(Math.random()*keys.length)];
+  document.getElementById('matchInput').value=mid;
+  document.getElementById('matchSelect').value='';
+  loadMatch(mid);
+};
+document.getElementById('matchInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ document.getElementById('matchSelect').value=''; loadMatch(document.getElementById('matchInput').value); } });
+
+document.getElementById('wA').oninput=e=>{W.a=parseFloat(e.target.value);document.getElementById('wAv').textContent=W.a.toFixed(1);renderEdges();};
+document.getElementById('wB').oninput=e=>{W.b=parseFloat(e.target.value);document.getElementById('wBv').textContent=W.b.toFixed(1);renderEdges();};
+document.getElementById('wC').oninput=e=>{W.c=parseFloat(e.target.value);document.getElementById('wCv').textContent=W.c.toFixed(1);renderEdges();};
+document.getElementById('resetW').onclick=()=>{
+  W.a=W.b=W.c=1;
+  ['wA','wB','wC'].forEach((id,i)=>{document.getElementById(id).value=1;document.getElementById(id+'v').textContent='1.0';});
+  renderEdges();
+};
+
+document.getElementById('undoBtn').onclick=undo;
+document.getElementById('redoBtn').onclick=redo;
+document.getElementById('resetBtn').onclick=resetInitial;
+
+document.getElementById('editSave').onclick=saveEdit;
+document.getElementById('editCancel').onclick=()=>{editCtx=null;openEdit(false);};
+document.getElementById('editReset').onclick=resetEdit;
+
+document.getElementById('exportBtn').onclick=exportOverrides;
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{ if(e.target.files[0]) importOverrides(e.target.files[0]); e.target.value=''; };
+document.getElementById('clearOvBtn').onclick=()=>{
+  if(confirm('清空 localStorage 中的所有覆盖？导出的 JSON 不受影响。')){
+    overrides={syn:{},cnt:{},power:{}}; saveOverrides(); rerender(); renderOvList();
+  }
+};
+
+/* 下拉框填充：仅保留"两队都是 TI 战队"的对战。每场显示 "队名 vs 队名 · 联赛简称"，值=match_id */
+(function fillSelect(){
+  const sel = document.getElementById('matchSelect');
+  const frag = document.createDocumentFragment();
+  let tiCount = 0;
+  Object.keys(ROSTERS).forEach(k=>{
+    const r = ROSTERS[k];
+    // 过滤：双方都必须在 TI 熟练度数据集中
+    if(!TEAMS[r.radiant_name] || !TEAMS[r.dire_name]) return;
+    tiCount++;
+    const lg = (r.league_name||'').slice(0,18);
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = `${r.radiant_name||'?'} vs ${r.dire_name||'?'} · ${lg} · ${k}`;
+    frag.appendChild(opt);
+  });
+  sel.appendChild(frag);
+  // 更新下拉框提示文案
+  const placeholder = sel.querySelector('option[value=""]');
+  if(placeholder) placeholder.textContent = `— 从下拉框选择一场（TI 对战，共 ${tiCount} 场）—`;
+})();
+
+/* 初始化 */
+renderOvList();
+// 自动加载一场示例
+const firstMid=Object.keys(ROSTERS)[0];
+if(firstMid){ document.getElementById('matchInput').value=firstMid; loadMatch(firstMid); }
+</script>
+</body>
+</html>
