@@ -2,9 +2,9 @@
 
 一个交互式的 Dota2 BP(Ban/Pick)分析工具,帮助评估双方阵容的协同、克制、单点强度,并提供战队英雄熟练度画像。
 
-> **在线访问**:[jinquandu.github.io/dota2_bp_tool](https://jinquandu.github.io/dota2_bp_tool/)
+> **在线访问**:[jinquandu.github.io/dota2_bp_tool/bp_analysis.html](https://jinquandu.github.io/dota2_bp_tool/bp_analysis.html)(推荐,直接打开可交互页面)
 >
-> 也可下载本仓库后双击 `bp_analysis.html` 本地打开(无需服务器,数据全部内嵌在同目录 `.js` 文件里)。
+> 也支持离线使用:下载本仓库后双击 `bp_analysis.html` 即可在浏览器打开,无需服务器,数据全部内嵌在同目录 `.js` 文件里。
 
 ---
 
