@@ -32,6 +32,14 @@
   .side h3{font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
   .side h3 .team{color:var(--muted);font-size:12px;font-weight:400}
   .side h3 .team-sel{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:400;border-radius:4px;padding:3px 8px;max-width:180px}
+
+  /* Ban 展示（真实比赛的禁用英雄，阵容上方灰显） */
+  .ban-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:8px}
+  .ban-lbl{font-size:10px;color:var(--neg);border:1px solid var(--neg);border-radius:3px;padding:0 4px;line-height:16px;margin-top:2px;white-space:nowrap}
+  .bans{display:flex;gap:4px;flex-wrap:wrap}
+  .ban-chip{width:40px;text-align:center}
+  .ban-chip img{width:36px;height:36px;border-radius:4px;filter:grayscale(.8);opacity:.65;border:1px solid rgba(231,76,60,.5)}
+  .ban-chip .nm{font-size:9px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
   .slots{display:flex;gap:8px;flex-wrap:wrap}
   .slot{width:64px;text-align:center;position:relative;cursor:pointer;border-radius:6px;padding:4px;border:1px solid transparent}
   .slot:hover{background:var(--surface2);border-color:var(--border)}
@@ -46,6 +54,7 @@
   .edge-net .lbl{font-size:11px;color:var(--accent);margin-bottom:2px}
   .edge-net .num{font-size:26px;font-weight:800}
   .edge-net .num.pos{color:var(--pos)} .edge-net .num.neg{color:var(--neg)}
+  .edge-net .who{font-size:13px;margin-top:2px;color:var(--text)}
   .edges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
   .edge-cell{background:var(--surface2);border-radius:6px;padding:8px}
   .edge-cell .lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
@@ -56,14 +65,27 @@
   .contributors .cb .v{color:var(--text);font-weight:600}
   .contributors .cb .v.pos{color:var(--pos)} .contributors .cb .v.neg{color:var(--neg)}
 
+  /* 净优势分解表（分量/计算/数值，替代对照图） */
+  .vs-table{width:100%;margin-top:10px;background:var(--surface2);border-radius:6px;border-collapse:collapse;font-size:12px}
+  .vs-table th{font-size:11px;color:var(--muted);font-weight:400;text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+  .vs-table th:last-child{text-align:right}
+  .vs-table td{padding:5px 8px;border-top:1px solid rgba(47,58,74,.4);line-height:1.5}
+  .vs-table td:first-child{white-space:nowrap}
+  .vs-table .vnum{text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .vs-table .vnum.pos{color:var(--pos)} .vs-table .vnum.neg{color:var(--neg)}
+  .vs-table .vrad{color:var(--radiant);font-weight:600} .vs-table .vdire{color:var(--dire);font-weight:600}
+
   /* 权重滑块 */
   .weights{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
   .w-item{display:flex;align-items:center;gap:6px}
   .w-item label{font-size:12px;color:var(--muted);min-width:70px}
   .w-item .val{font-size:13px;font-weight:600;min-width:36px;text-align:right}
 
-  /* 矩阵区（HTML grid） */
-  #matrixWrap{background:var(--surface);border-radius:8px;padding:14px;margin-top:14px;overflow-x:auto}
+  /* 矩阵区（HTML grid）—— 置顶行：矩阵在左，覆盖表在右 */
+  #matrixRow{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:14px}
+  #matrixRow #matrixWrap{flex:1 1 620px;min-width:620px}
+  #ovPanel{flex:0 0 300px;margin-bottom:0}
+  #matrixWrap{background:var(--surface);border-radius:8px;padding:14px;overflow-x:auto}
   .legend{display:flex;gap:18px;justify-content:center;margin-top:10px;font-size:11px;color:var(--muted);flex-wrap:wrap}
   .legend .sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:middle;margin-right:4px}
   .mgrid{display:inline-grid;margin:8px auto 0}
@@ -84,8 +106,8 @@
   .mcorner{background:transparent}
   .mempty{background:#141a22}
 
-  /* 候选替换面板 */
-  #candPanel{position:fixed;right:16px;top:16px;width:340px;max-height:80vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;z-index:100;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  /* 候选替换面板（居中大弹窗，减少滚动） */
+  #candPanel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:640px;max-width:94vw;max-height:92vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;z-index:100;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   #candPanel.show{display:block}
   #candPanel h3{font-size:14px;margin-bottom:8px}
   #candPanel .close{float:right;cursor:pointer;color:var(--muted);font-size:18px}
@@ -97,6 +119,23 @@
   .cand .info .delta{font-size:11px;color:var(--pos)}
   .cand .info .delta.neg{color:var(--neg)}
   .cand .reasons{font-size:10px;color:var(--muted);margin-top:2px}
+
+  /* 英雄选择候选表（简化选择功能：图标/强度/协同/克制/总分，按总分倒序） */
+  .pk-table{width:100%;border-collapse:collapse;font-size:12px}
+  .pk-table th{font-size:11px;color:var(--muted);font-weight:400;padding:4px 6px;border-bottom:1px solid var(--border);text-align:right;position:sticky;top:0;background:var(--surface)}
+  .pk-table th:first-child{text-align:left}
+  .pk-table td{padding:4px 6px;border-bottom:1px solid rgba(47,58,74,.4)}
+  .pk-table tbody tr{cursor:pointer}
+  .pk-table tbody tr:hover{background:var(--surface2)}
+  .pk-hero{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pk-hero img{width:28px;height:28px;border-radius:4px}
+  .pk-hero span{font-size:12px}
+  .pk-num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pk-pos{color:var(--pos)} .pk-neg{color:var(--neg)}
+  .pk-total{font-weight:700}
+  .pk-table tbody tr.pk-banned{opacity:.45;cursor:not-allowed}
+  .pk-table tbody tr.pk-banned:hover{background:transparent}
+  .pk-ban-tag{font-size:9px;color:var(--neg);border:1px solid var(--neg);border-radius:3px;padding:0 3px;margin-left:4px;white-space:nowrap}
 
   /* 覆盖编辑 */
   .badge{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:10px;color:var(--accent);margin-left:6px}
@@ -144,7 +183,7 @@
 <body>
 
 <h1>BP 分析辅助 — 两两关系矩阵</h1>
-<div class="hint muted" id="metaHint">矩阵：对角=单点强度(胜率偏离50%)、上三角=同队协同(正=契合)、下三角=跨队克制(正=行克制列)。单元格右上角 +/- 按钮微调（功能⑥）。</div>
+<div class="hint muted" id="metaHint">矩阵：对角=单点强度(胜率偏离50%)、同队上三角=协同(正=契合)、跨队格一律"行克列"（左下块=天辉克夜魇，右上块=夜魇克天辉，两个方向都可见）。单元格右上角 +/- 按钮微调（功能⑥）。阵容不全时，矩阵与净优势按已选英雄实时计算。</div>
 
 <!-- 功能① 输入比赛号 -->
 <div class="panel">
@@ -163,32 +202,59 @@
   </div>
 </div>
 
+<!-- 两两关系矩阵（置顶）+ 关系微调覆盖表（矩阵右侧） -->
+<div id="matrixRow">
+  <div id="matrixWrap">
+    <div class="legend">
+      <span><span class="sw" style="background:#2166ac"></span>负(互斥/被克)</span>
+      <span><span class="sw" style="background:#f7f7f7"></span>中性 0</span>
+      <span><span class="sw" style="background:#b2182b"></span>正(契合/克制)</span>
+      <span class="muted">| 同队上三角=协同(正=契合) · 跨队格一律行克列：左下=天辉克夜魇、右上=夜魇克天辉 · 对角=强度 · 悬停 +/- 微调</span>
+    </div>
+    <div id="matrixGrid" class="mgrid"></div>
+  </div>
+  <div class="panel" id="ovPanel">
+    <h2>关系微调覆盖表（功能⑥）<span class="badge" id="ovCount">0</span></h2>
+    <div class="row">
+      <button id="exportBtn">导出 bp_overrides.json</button>
+      <button id="importBtn">导入 JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+      <button id="clearOvBtn">清空 localStorage</button>
+    </div>
+    <div class="hint">说明：矩阵单元格右上角 +/- 按钮微调 → 自动存 localStorage → 导出 JSON 后给 Python 脚本合并</div>
+    <div id="ovList" style="margin-top:10px;font-size:12px;max-height:320px;overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- 阵容 + 功能③权重 + 功能④⑤槽位操作 -->
 <div class="panel">
   <div class="rosters">
     <div class="side radiant">
-      <h3><span style="color:var(--radiant)">Radiant</span><select class="team-sel" id="rTeam"></select></h3>
+      <h3><span style="color:var(--radiant)">天辉</span><select class="team-sel" id="rTeam"></select></h3>
+      <div class="ban-row"><span class="ban-lbl">禁用</span><div class="bans" id="rBans"></div></div>
       <div class="slots" id="rSlots"></div>
     </div>
     <div class="side dire">
-      <h3><span style="color:var(--dire)">Dire</span><select class="team-sel" id="dTeam"></select></h3>
+      <h3><span style="color:var(--dire)">夜魇</span><select class="team-sel" id="dTeam"></select></h3>
+      <div class="ban-row"><span class="ban-lbl">禁用</span><div class="bans" id="dBans"></div></div>
       <div class="slots" id="dSlots"></div>
     </div>
   </div>
 
-  <!-- 功能③ 自定义权重 -->
+  <!-- 功能③ 自定义权重（克制默认降权 0.4：关系对多、噪声大） -->
   <h2 style="margin-top:14px">综合净优势 = a·协同 + b·克制 + c·强度</h2>
   <div class="weights">
     <div class="w-item"><label>a (协同)</label><input type="range" id="wA" min="-2" max="3" step="0.1" value="1"><span class="val" id="wAv">1.0</span></div>
-    <div class="w-item"><label>b (克制)</label><input type="range" id="wB" min="-2" max="3" step="0.1" value="1"><span class="val" id="wBv">1.0</span></div>
+    <div class="w-item"><label>b (克制)</label><input type="range" id="wB" min="-2" max="3" step="0.1" value="0.4"><span class="val" id="wBv">0.4</span></div>
     <div class="w-item"><label>c (强度)</label><input type="range" id="wC" min="-2" max="3" step="0.1" value="1"><span class="val" id="wCv">1.0</span></div>
-    <button id="resetW">重置 (1,1,1)</button>
+    <button id="resetW">重置 (1,0.4,1)</button>
   </div>
 
   <!-- 分量（net_edge 在上，便于一眼看综合；下三列为各分量及其主要贡献变量） -->
   <div class="edge-net" id="netCell">
     <div class="lbl">净优势 net_edge = a·协同 + b·克制 + c·强度</div>
     <div class="num" id="netE">—</div>
+    <div class="who" id="netWho">—</div>
   </div>
   <div class="edges">
     <div class="edge-cell">
@@ -197,7 +263,7 @@
       <div class="contributors" id="synContrib"></div>
     </div>
     <div class="edge-cell">
-      <div class="lbl">克制 cnt_edge <span class="muted" style="font-size:10px">(R克D为正)</span></div>
+      <div class="lbl">克制 cnt_edge <span class="muted" style="font-size:10px">(天辉克夜魇为正)</span></div>
       <div class="num" id="cntE">—</div>
       <div class="contributors" id="cntContrib"></div>
     </div>
@@ -207,6 +273,8 @@
       <div class="contributors" id="powContrib"></div>
     </div>
   </div>
+  <!-- 净优势分解表：三个分量的双方数值、算式与差值 -->
+  <table id="vsTable" class="vs-table"></table>
   <div class="hint" id="bandLabel" style="text-align:center;margin-top:8px"></div>
 
   <!-- 功能⑤ 撤销/重做 -->
@@ -222,30 +290,6 @@
 <div class="panel">
   <h2>战队熟练度画像 <span class="muted" style="font-size:11px;font-weight:400">（TI 正赛数据，独立于评分体系，不进 net_edge）</span></h2>
   <div id="teamsPanel"></div>
-</div>
-
-<!-- 功能① 矩阵 -->
-<div id="matrixWrap">
-  <div class="legend">
-    <span><span class="sw" style="background:#2166ac"></span>负(互斥/被克)</span>
-    <span><span class="sw" style="background:#f7f7f7"></span>中性 0</span>
-    <span><span class="sw" style="background:#b2182b"></span>正(契合/克制)</span>
-    <span class="muted">| 上三角红=同队契合强 · 左下红=Radiant英雄克制对应Dire英雄 · 悬停格子显示 +/- 微调按钮</span>
-  </div>
-  <div id="matrixGrid" class="mgrid"></div>
-</div>
-
-<!-- 功能⑥ 覆盖管理 -->
-<div class="panel">
-  <h2>关系微调覆盖表（功能⑥）<span class="badge" id="ovCount">0</span></h2>
-  <div class="row">
-    <button id="exportBtn">导出 bp_overrides.json</button>
-    <button id="importBtn">导入 JSON</button>
-    <input type="file" id="importFile" accept=".json" style="display:none">
-    <button id="clearOvBtn">清空 localStorage</button>
-    <span class="muted" style="font-size:12px">说明：双击矩阵单元格修改值 → 自动存 localStorage → 导出 JSON 后给 Python 脚本合并</span>
-  </div>
-  <div id="ovList" style="margin-top:10px;font-size:12px;max-height:120px;overflow-y:auto"></div>
 </div>
 
 <!-- 功能④ 候选替换浮层 -->
@@ -324,49 +368,51 @@ function powerVal(h){
 const state = {
   radiant: [],      // [heroId x5]
   dire: [],
+  radiantBans: [],  // 本场天辉 ban 名单（展示用，不可编辑）
+  direBans: [],
   initial: null,    // 初始阵容快照 {radiant,dire}
   history: [],      // [{side,pos,old,new}] 操作栈
   future: [],       // redo 栈
   selected: null,   // 当前选中的槽位 {side,pos}（用于功能④）
   meta: null,       // 当前比赛信息
 };
-const W = {a:1, b:1, c:1};  // 权重
+const W = {a:1, b:0.4, c:1};  // 权重（克制默认降权）
 
 /* ============================== 阵容评估 ============================== */
 function computeEdges(rad, dire){
-  // 协同：每方 C(5,2)=10 对，记录每对贡献
+  // 协同：每方 C(5,2)=10 对，记录每对贡献（side 标签用中文阵营名）
   let synA=0, synE=0;
   const synPairs=[];
   for(let i=0;i<rad.length;i++)for(let j=i+1;j<rad.length;j++){
     const v=synVal(rad[i],rad[j]); synA+=v;
-    synPairs.push({a:rad[i],b:rad[j],v,side:'R'});
+    synPairs.push({a:rad[i],b:rad[j],v,side:'天辉'});
   }
   for(let i=0;i<dire.length;i++)for(let j=i+1;j<dire.length;j++){
     const v=synVal(dire[i],dire[j]); synE+=v;
-    synPairs.push({a:dire[i],b:dire[j],v,side:'D'});
+    synPairs.push({a:dire[i],b:dire[j],v,side:'夜魇'});
   }
-  // 克制：5x5，双向（R克D 正向贡献，D克R 负向贡献）
+  // 克制：5x5，双向（天辉克夜魇 正向贡献，夜魇克天辉 负向贡献）
   let cntA=0, cntE=0;
   const cntPairs=[];
   for(const a of rad)for(const b of dire){
     const v=cntVal(a,b); cntA+=v;
-    cntPairs.push({a,b,v,dir:'R克D'});
+    cntPairs.push({a,b,v,dir:'天辉克夜魇'});
   }
   for(const a of dire)for(const b of rad){
     const v=cntVal(a,b); cntE+=v;
-    cntPairs.push({a,b,v,dir:'D克R'});
+    cntPairs.push({a,b,v,dir:'夜魇克天辉'});
   }
   // 强度
   let pA=0,pE=0;
   const powItems=[];
-  for(const h of rad){ const v=powerVal(h); pA+=v; powItems.push({h,v,side:'R'}); }
-  for(const h of dire){ const v=powerVal(h); pE+=v; powItems.push({h,v,side:'D'}); }
+  for(const h of rad){ const v=powerVal(h); pA+=v; powItems.push({h,v,side:'天辉'}); }
+  for(const h of dire){ const v=powerVal(h); pE+=v; powItems.push({h,v,side:'夜魇'}); }
   const synEdge=synA-synE, cntEdge=cntA-cntE, powerEdge=pA-pE;
   const netEdge = W.a*synEdge + W.b*cntEdge + W.c*powerEdge;
   return {synA,synE,synEdge,synPairs, cntA,cntE,cntEdge,cntPairs, pA,pE,powerEdge,powItems, netEdge};
 }
 function bandLabel(net){
-  const a=Math.abs(net), who=net>0?"Radiant（己方）":"Dire（敌方）";
+  const a=Math.abs(net), who=net>0?"天辉（己方）":"夜魇（敌方）";
   if(a>0.8) return "压倒性优势 · "+who;
   if(a>0.5) return "明显优势 · "+who;
   if(a>0.3) return "倾向优势 · "+who;
@@ -385,7 +431,8 @@ function heroImgTag(id){
   const onerr=`onerror="var t=+this.dataset.try||0;t++;this.dataset.try=t;if(t===1&&this.dataset.fb)this.src=this.dataset.fb;else if(t===2)this.src='${ph}';this.onerror=null;"`;
   return `<img src="${h.icon}" data-fb="${h.icon2||''}" data-try="0" ${onerr}>`;
 }
-function hname(id){ return HEROES[id]?HEROES[id].name:("#"+id); }
+function hname(id){ const h=HEROES[id]; return h ? (h.cn || h.name) : ("#"+id); }   // 中文名优先
+function hen(id){ return HEROES[id]?HEROES[id].name:("#"+id); }                     // 英文名（副显/搜索用）
 function setMatchInfo(text){ const el=document.getElementById('matchInfo'); if(el) el.textContent=text; }
 
 function loadMatch(mid){
@@ -394,12 +441,13 @@ function loadMatch(mid){
   const r = ROSTERS[mid];
   if(!r){
     const all = Object.keys(ROSTERS);
-    const range = all.length ? `${all[0]} ~ ${all[all.length-1]}` : '空';
-    setMatchInfo(`✗ 未找到 match_id="${mid}"。当前数据集共 ${all.length} 场（${range}），范围 ≥2026-04-01 的 Tier1 比赛。请用下拉框选择或点"随机一场"。`);
+    setMatchInfo(`✗ 未找到 match_id="${mid}"。当前数据集共 ${all.length} 场（≥2026-04-01 的 Tier1 比赛 + TI2026 正赛）。请用下拉框选择或点"随机一场"。`);
     return false;
   }
   state.radiant = [...r.radiant];
   state.dire = [...r.dire];
+  state.radiantBans = r.radiant_bans || [];
+  state.direBans = r.dire_bans || [];
   state.initial = {radiant:[...r.radiant], dire:[...r.dire]};
   state.history=[]; state.future=[];
   state.meta = r;
@@ -409,7 +457,7 @@ function loadMatch(mid){
   state.rTeam = r.radiant_name;
   state.dTeam = r.dire_name;
   const dt = new Date(r.start_time*1000).toISOString().slice(0,10);
-  document.getElementById('matchInfo').textContent = `${r.league_name} · ${r.radiant_name} vs ${r.dire_name} · ${dt} · ${r.radiant_win?'R胜':'D胜'}`;
+  document.getElementById('matchInfo').textContent = `${r.league_name} · ${r.radiant_name} vs ${r.dire_name} · ${dt} · ${r.radiant_win?'天辉胜':'夜魇胜'}`;
   rerender();
   return true;
 }
@@ -438,11 +486,29 @@ function setTeamSelect(elId, selected){
 }
 
 function rerender(){
+  renderBans();
   renderSlots();
   renderEdges();
   renderMatrix();
   renderHistInfo();
   renderTeamsPanel();
+}
+
+/* 真实比赛 BP：双方禁用英雄灰显在阵容上方（仅展示，不可编辑/不可选入） */
+function renderBans(){
+  for(const side of ['radiant','dire']){
+    const el = document.getElementById(side==='radiant'?'rBans':'dBans');
+    if(!el) continue;
+    const bans = state[side==='radiant'?'radiantBans':'direBans'] || [];
+    el.innerHTML = '';
+    bans.forEach(h=>{
+      const d = document.createElement('div');
+      d.className = 'ban-chip';
+      d.title = `${hname(h)} ${hen(h)}`;
+      d.innerHTML = `${heroImgTag(h)}<span class="nm">${hname(h)}</span>`;
+      el.appendChild(d);
+    });
+  }
 }
 
 /* ============================== 战队熟练度画像（需求2，独立展示，不进评分） ============================== */
@@ -468,7 +534,7 @@ function renderTeamsPanel(){
     const arr = state[side].filter(x=>x!==undefined);
     if(!data){
       return `<div class="tp-side ${isR?'':'dire'}">
-        <h4><span>${isR?'Radiant':'Dire'}</span><span class="tag">${name||'—'} · 无熟练度数据</span></h4>
+        <h4><span>${isR?'天辉':'夜魇'}</span><span class="tag">${name||'—'} · 无熟练度数据</span></h4>
         <div class="tp-empty">⚠ "${name||''}" 不在 TI 熟练度数据集中（仅覆盖 TI 正赛 16 队）</div>
       </div>`;
     }
@@ -477,11 +543,11 @@ function renderTeamsPanel(){
     const metric = (label, val, cls='') => `<div class="m ${cls}"><span class="ml">${label}</span><span class="mv">${val}</span></div>`;
     const rows = arr.map(h=>{
       const info = data.heroes[String(h)];
-      if(!info) return `<div class="tp-row"><div class="nm"><span class="en">${hname(h)}</span><span class="zh">${hcn(h)}</span></div><div class="meta">无熟练度记录</div></div>`;
+      if(!info) return `<div class="tp-row"><div class="nm"><span class="en">${hen(h)}</span><span class="zh">${hcn(h)}</span></div><div class="meta">无熟练度记录</div></div>`;
       // 熟练度配色：≥75 绿(熟练)、60-75 中性、<60 红(生疏)
       const profCls = info.prof>=75?'pos':(info.prof<60?'neg':'');
       return `<div class="tp-row tp-row-multi">
-        <div class="nm"><span class="en">${hname(h)}</span><span class="zh">${hcn(h)}</span></div>
+        <div class="nm"><span class="en">${hen(h)}</span><span class="zh">${hcn(h)}</span></div>
         <div class="metrics">
           ${metric('场次', info.n)}
           ${metric('全量胜率', info.wr_all.toFixed(0)+'%')}
@@ -505,7 +571,7 @@ function renderTeamsPanel(){
       return `<span class="pill">${hcn(hid)} <span class="v ${cls}">${v.prof.toFixed(0)}</span></span>`;
     }).join('');
     return `<div class="tp-side ${isR?'':'dire'}">
-      <h4><span style="color:${isR?'var(--radiant)':'var(--dire)'}">${isR?'Radiant':'Dire'}</span><span class="tag">${name}</span></h4>
+      <h4><span style="color:${isR?'var(--radiant)':'var(--dire)'}">${isR?'天辉':'夜魇'}</span><span class="tag">${name}</span></h4>
       <div class="tp-list">${rows}</div>
       ${total}
       <div class="tp-pool"><b>熟练度英雄池 Top6</b><div class="tp-pool-list">${poolHtml}</div></div>
@@ -525,6 +591,7 @@ function renderSlots(){
       const div = document.createElement('div');
       div.className = 'slot ' + (id!==undefined?'filled':'empty');
       if(id!==undefined){
+        div.title = hen(id);
         div.innerHTML = `${heroImgTag(id)}<span class="nm">${hname(id)}</span>`;
         // 点击槽位：弹换人推荐（功能④）
         div.onclick = ()=>{ state.selected={side,pos:i}; showCandidates(side,i); };
@@ -542,21 +609,30 @@ function renderSlots(){
 }
 
 function renderEdges(){
-  const rc = state.radiant.filter(x=>x!==undefined).length;
-  const dc = state.dire.filter(x=>x!==undefined).length;
-  if(rc<5 || dc<5){
-    ['synE','cntE','powE','netE'].forEach(id=>document.getElementById(id).textContent='—');
-    ['synContrib','cntContrib','powContrib'].forEach(id=>document.getElementById(id).innerHTML='');
-    document.getElementById('bandLabel').textContent = `阵容不完整 (R:${rc}/5, D:${dc}/5)`;
-    return;
-  }
-  const e = computeEdges(state.radiant, state.dire);
+  // 阵容不全时也实时评估：只按已选英雄计算（需求③），bandLabel 标注不完整
+  const rad = state.radiant.filter(x=>x!==undefined);
+  const dire = state.dire.filter(x=>x!==undefined);
+  const rc = rad.length, dc = dire.length;
+  const e = computeEdges(rad, dire);
   const setNum=(id,v)=>{const el=document.getElementById(id); el.textContent=(v>=0?'+':'')+v.toFixed(3); el.className='num '+(v>=0?'pos':'neg');};
   setNum('synE', e.synEdge);
   setNum('cntE', e.cntEdge);
   setNum('powE', e.powerEdge);
   setNum('netE', e.netEdge);
-  document.getElementById('bandLabel').innerHTML = `<b>${bandLabel(e.netEdge)}</b>`;
+  // 谁占优：正=天辉、负=夜魇，幅度分档与 bandLabel 一致；|net|<0.1 视为均势
+  const na = Math.abs(e.netEdge);
+  const whoEl = document.getElementById('netWho');
+  if(na < 0.1){
+    whoEl.innerHTML = '<span class="muted">势均力敌——双方均无明显优势</span>';
+  }else{
+    const isR = e.netEdge > 0;
+    const lv = na>0.8?'压倒性':na>0.5?'明显':na>0.3?'倾向':'微弱';
+    whoEl.innerHTML = `<span style="color:${isR?'var(--radiant)':'var(--dire)'};font-weight:700">${isR?'天辉（己方）':'夜魇（敌方）'}</span> 占优（${lv}优势）`;
+  }
+  const band = bandLabel(e.netEdge);
+  document.getElementById('bandLabel').innerHTML = (rc<5||dc<5)
+    ? `<b>阵容不完整（R:${rc}/5, D:${dc}/5）· 按已选英雄实时评估：</b>${band}`
+    : `<b>${band}</b>`;
 
   // 列出影响变量（按绝对值降序，取 Top，正负分别标色）
   const fmtPair = (p, label) => {
@@ -576,6 +652,31 @@ function renderEdges(){
   // 强度
   const powSorted = e.powItems.slice().sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
   document.getElementById('powContrib').innerHTML = powSorted.map(fmtItem).join('');
+  renderVsTable(e, rc, dc);
+}
+
+/* 净优势分解表：分量/计算/数值——双方各多少、谁克制谁多、平均胜率，天辉红/夜魇蓝 */
+function renderVsTable(e, nR, nD){
+  const el = document.getElementById('vsTable');
+  if(!el) return;
+  const fmt = v => (v>=0?'+':'')+v.toFixed(3);
+  const wr = (p, n) => n>0 ? (p/n+0.5)*100 : null;   // 平均胜率 = Σpower/n + 50%
+  const wrTxt = w => w===null ? '—' : w.toFixed(1)+'%';
+  const pairs = n => n*(n-1)/2;
+  const rows = [
+    {name:'协同净分 syn_edge',
+     calc:`天辉 ${pairs(nR)} 对协同合计 <span class="vrad">${fmt(e.synA)}</span> − 夜魇 ${pairs(nD)} 对 <span class="vdire">${fmt(e.synE)}</span>`,
+     val:e.synEdge},
+    {name:'克制净分 cnt_edge',
+     calc:`天辉克夜魇 ${nR*nD} 对合计 <span class="vrad">${fmt(e.cntA)}</span> − 夜魇克天辉 ${nR*nD} 对 <span class="vdire">${fmt(e.cntE)}</span>`,
+     val:e.cntEdge},
+    {name:'强度净分 pow_edge',
+     calc:`天辉 ${nR} 人平均胜率 ${wrTxt(wr(e.pA,nR))}（强度和 <span class="vrad">${fmt(e.pA)}</span>）− 夜魇 ${nD} 人 ${wrTxt(wr(e.pE,nD))}（<span class="vdire">${fmt(e.pE)}</span>）`,
+     val:e.powerEdge},
+  ];
+  el.innerHTML = '<thead><tr><th>分量</th><th>计算</th><th>数值</th></tr></thead><tbody>' +
+    rows.map(r=>`<tr><td>${r.name}</td><td>${r.calc}</td><td class="vnum ${r.val>=0?'pos':'neg'}">${fmt(r.val)}</td></tr>`).join('') +
+    '</tbody>';
 }
 
 /* ============================== 矩阵绘制（功能①，HTML grid） ============================== */
@@ -584,15 +685,17 @@ function renderMatrix(){
   grid.innerHTML = '';
   const rad = state.radiant.filter(x=>x!==undefined);
   const dire = state.dire.filter(x=>x!==undefined);
-  if(rad.length<5 || dire.length<5){
-    grid.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">双方阵容完整后显示矩阵</div>';
+  if(rad.length+dire.length===0){
+    grid.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px">尚未选择英雄 —— 点击槽位 "+ 选择" 开始构建阵容，矩阵会随已选英雄实时呈现（需求③）</div>';
     return;
   }
-  // 阵营顺序：D 在前(0-4)、R 在后(5-9)
-  // → 上三角 i<j 同方=协同(左上D协同块/右下R协同块)
-  // → 下三角 i>j 跨方=行克列，左下角=R行D列=R克D(正值=红)
+  // 阵容不全时也渲染：矩阵行列=当前已选英雄（需求③）
+  // 阵营顺序：D 在前、R 在后
+  // → 同队对：上三角=协同(左上D块/右下R块)，下三角镜像留空（协同对称，一数即可）
+  // → 跨队对：一律"行克列"——左下块=R行D列(天辉克夜魇)，右上块=D行R列(夜魇克天辉)
+  //   两个方向各有其格，A克B与B克A都能看到
   const heroes = [...dire, ...rad];
-  const sd = ['D','D','D','D','D','R','R','R','R','R'];
+  const sd = [...dire.map(()=>'D'), ...rad.map(()=>'R')];
   const n = heroes.length;
   const CELL = 60;       // 单元格像素
   const HEAD = 56;       // 表头(图标+名)像素
@@ -601,8 +704,8 @@ function renderMatrix(){
   let vmax = 0.2;
   for(let i=0;i<n;i++)for(let j=0;j<n;j++){
     if(i===j) vmax=Math.max(vmax,Math.abs(powerVal(heroes[i])));
-    else if(i<j && sd[i]===sd[j]) vmax=Math.max(vmax,Math.abs(synVal(heroes[i],heroes[j])));
-    else if(i>j && sd[i]!==sd[j]) vmax=Math.max(vmax,Math.abs(cntVal(heroes[i],heroes[j])));
+    else if(sd[i]===sd[j]){ if(i<j) vmax=Math.max(vmax,Math.abs(synVal(heroes[i],heroes[j]))); }
+    else vmax=Math.max(vmax,Math.abs(cntVal(heroes[i],heroes[j])));
   }
   vmax = Math.max(vmax, 0.3);
 
@@ -618,22 +721,23 @@ function renderMatrix(){
   grid.style.gridTemplateColumns = `${HEAD}px repeat(${n}, ${CELL}px)`;
   grid.style.gridTemplateRows = `${HEAD}px repeat(${n}, ${CELL}px)`;
 
-  // 单元格取值逻辑
+  // 单元格取值逻辑：跨队格一律"行克列"（有序，a=行=克方），左下=天辉克夜魇、右上=夜魇克天辉
   function cellInfo(i, j){  // i,j 是英雄索引(0-based)
     if(i===j) return {type:'power', v:powerVal(heroes[i]), a:heroes[i]};  // a=hero_id, 覆盖键为单英雄
-    if(i<j && sd[i]===sd[j]) return {type:'syn', v:synVal(heroes[i],heroes[j]), a:Math.min(heroes[i],heroes[j]), b:Math.max(heroes[i],heroes[j])};
-    if(i>j && sd[i]!==sd[j]) return {type:'cnt', v:cntVal(heroes[i],heroes[j]), a:heroes[i], b:heroes[j]};
-    return {type:'empty'};
+    if(sd[i]===sd[j]) return i<j
+      ? {type:'syn', v:synVal(heroes[i],heroes[j]), a:Math.min(heroes[i],heroes[j]), b:Math.max(heroes[i],heroes[j])}
+      : {type:'empty'};  // 协同对称，同队下三角镜像留空
+    return {type:'cnt', v:cntVal(heroes[i],heroes[j]), a:heroes[i], b:heroes[j]};
   }
 
   // 头部渲染（图标+名字）
   const headTag = (h) => {
     const c = HEROES[h] ? (HEROES[h].attr==='str'?'#e74c3c':HEROES[h].attr==='agi'?'#27ae60':HEROES[h].attr==='int'?'#3498db':'#95a5a6') : '#666';
-    return `<div class="mhead"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm">${hname(h)}</div></div>`;
+    return `<div class="mhead"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm" title="${hen(h)}">${hname(h)}</div></div>`;
   };
   const rowTag = (h) => {
     const c = HEROES[h] ? (HEROES[h].attr==='str'?'#e74c3c':HEROES[h].attr==='agi'?'#27ae60':HEROES[h].attr==='int'?'#3498db':'#95a5a6') : '#666';
-    return `<div class="mlabel"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm">${hname(h)}</div></div>`;
+    return `<div class="mlabel"><div style="border:2px solid ${c};border-radius:4px">${heroImgTag(h)}</div><div class="nm" title="${hen(h)}">${hname(h)}</div></div>`;
   };
 
   // (0,0) 角落
@@ -701,31 +805,63 @@ function nudgeCell(info, dir){
 }
 
 /* ============================== 功能①补选 / 功能④ 换人 ============================== */
-// 英雄选择器（空位补选，不受阵容完整性限制）
+// 英雄选择器（空位补选，不受阵容完整性限制）。
+// 简化版：打开即呈现候选表【图标/强度/协同/克制/总分】，按总分倒序，点击行直接选入。
+//   强度 = 该英雄单点 power；协同 = Σ与同侧已选英雄的协同；克制 = Σ(克敌方) − Σ(被敌方克)；
+//   总分 = a·协同 + b·克制 + c·强度（用页面当前权重，与 net_edge 同口径）
 function openHeroPicker(side, pos){
   const isR = side==='radiant';
-  const taken = new Set([...state.radiant.filter(x=>x!==undefined), ...state.dire.filter(x=>x!==undefined)]);
-  document.getElementById('candTitle').innerHTML = `为 ${isR?'Radiant':'Dire'} 第${pos+1}位 选择英雄`;
+  const own = (isR?state.radiant:state.dire).filter(x=>x!==undefined);
+  const opp = (isR?state.dire:state.radiant).filter(x=>x!==undefined);
+  // 已选不可选；双方 ban 的英雄仍展示在表中但置灰不可选（真实 BP 里无法上场）
+  const taken = new Set([...own, ...opp]);
+  const banned = new Set([...(state.radiantBans||[]), ...(state.direBans||[])]);
+  document.getElementById('candTitle').innerHTML = `为 ${isR?'天辉':'夜魇'} 第${pos+1}位 选择英雄`;
   const list = document.getElementById('candList');
   list.innerHTML = '';
-  // 搜索框
+  // 搜索框（中文/英文/slug 均可）
   const searchWrap = document.createElement('div');
   searchWrap.style.cssText='margin-bottom:8px';
-  searchWrap.innerHTML = `<input type="text" id="pickerSearch" placeholder="搜索英雄名/拼音..." style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px;font-size:13px">`;
+  searchWrap.innerHTML = `<input type="text" id="pickerSearch" placeholder="搜索英雄名（中文/英文）..." style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px;font-size:13px">`;
   list.appendChild(searchWrap);
-  const grid = document.createElement('div');
-  grid.id='pickerGrid';
-  grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:4px;max-height:50vh;overflow-y:auto';
-  list.appendChild(grid);
+  const hint = document.createElement('div');
+  hint.className='hint';
+  hint.style.marginBottom='6px';
+  hint.textContent = `总分 = a·协同 + b·克制 + c·强度（当前权重 ${W.a.toFixed(1)}/${W.b.toFixed(1)}/${W.c.toFixed(1)}）· 克制=克敌方−被敌方克 · 点击行选入 · 被禁英雄灰显不可选`;
+  list.appendChild(hint);
+  // 候选评分一次算好，搜索只过滤不重算（banned 行保留展示、不可点击）
+  const scored = HERO_LIST.filter(h=>!taken.has(h.id)).map(h=>{
+    const syn = own.reduce((s,o)=>s+synVal(h.id,o), 0);
+    const cnt = opp.reduce((s,o)=>s+cntVal(h.id,o)-cntVal(o,h.id), 0);
+    const pow = powerVal(h.id);
+    return {h, syn, cnt, pow, total: W.a*syn + W.b*cnt + W.c*pow, banned: banned.has(h.id)};
+  });
+  scored.sort((a,b)=>b.total-a.total);
+  const wrap = document.createElement('div');
+  wrap.style.cssText='max-height:72vh;overflow-y:auto';
+  const table = document.createElement('table');
+  table.className='pk-table';
+  table.innerHTML = '<thead><tr><th>英雄</th><th>强度</th><th>协同</th><th>克制</th><th>总分</th></tr></thead>';
+  const tbody = document.createElement('tbody');
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  list.appendChild(wrap);
+  const fmt = v => `<span class="${v>=0?'pk-pos':'pk-neg'}">${v>=0?'+':''}${v.toFixed(3)}</span>`;
   const render = (kw='')=>{
-    grid.innerHTML='';
-    HERO_LIST.filter(h=>!taken.has(h.id) && (hname(h.id).toLowerCase().includes(kw.toLowerCase()) || h.slug.toLowerCase().includes(kw.toLowerCase())))
-      .forEach(h=>{
-        const c=document.createElement('div');
-        c.className='cand'; c.style.cssText='flex-direction:column;text-align:center;padding:4px';
-        c.innerHTML=`${heroImgTag(h.id).replace('width="52" height="52"','width="44" height="44"')}<div style="font-size:10px;margin-top:2px">${hname(h.id).slice(0,8)}</div>`;
-        c.onclick=()=>{ pickHero(side,pos,h.id); document.getElementById('candPanel').classList.remove('show'); };
-        grid.appendChild(c);
+    tbody.innerHTML='';
+    const q = kw.toLowerCase();
+    scored.filter(s => !kw || (s.h.cn||'').includes(kw) || s.h.name.toLowerCase().includes(q) || s.h.slug.toLowerCase().includes(q))
+      .forEach(s=>{
+        const tr=document.createElement('tr');
+        tr.title = s.h.name;
+        if(s.banned) tr.className='pk-banned';
+        tr.innerHTML = `<td><div class="pk-hero">${heroImgTag(s.h.id).replace('width="52" height="52"','width="28" height="28"')}<span>${hname(s.h.id)}</span>${s.banned?'<span class="pk-ban-tag">禁</span>':''}</div></td>` +
+          `<td class="pk-num">${fmt(s.pow)}</td>` +
+          `<td class="pk-num">${fmt(s.syn)}</td>` +
+          `<td class="pk-num">${fmt(s.cnt)}</td>` +
+          `<td class="pk-num pk-total">${fmt(s.total)}</td>`;
+        if(!s.banned) tr.onclick=()=>{ pickHero(side,pos,s.h.id); document.getElementById('candPanel').classList.remove('show'); };
+        tbody.appendChild(tr);
       });
   };
   render();
@@ -740,21 +876,22 @@ function pickHero(side,pos,newId){
   rerender();
 }
 
-/* 功能④ 换人推荐 */
+/* 功能④ 换人推荐（阵容不全时同样可推，按已选英雄计算） */
 function showCandidates(side, pos){
-  if(state.radiant.filter(x=>x!==undefined).length<5 || state.dire.filter(x=>x!==undefined).length<5){
-    return; // 阵容不全不推
-  }
   const old = state[side][pos];
-  const taken = new Set([...state.radiant.filter(x=>x!==undefined), ...state.dire.filter(x=>x!==undefined)]);
-  const base = computeEdges(state.radiant, state.dire);
+  if(old===undefined) return;
+  const rad = state.radiant.filter(x=>x!==undefined);
+  const dire = state.dire.filter(x=>x!==undefined);
+  // 已选 + 双方 ban 均不可作为替换候选（真实 BP 里被禁英雄无法上场）
+  const taken = new Set([...rad, ...dire, ...(state.radiantBans||[]), ...(state.direBans||[])]);
+  const base = computeEdges(rad, dire);
   const isR = side==='radiant';
   const cands = [];
   for(const h of HERO_LIST){
     if(taken.has(h.id) || h.id===old) continue;
-    const newR = [...state.radiant], newD = [...state.dire];
-    if(isR) newR[pos]=h.id; else newD[pos]=h.id;
-    const after = computeEdges(newR, newD);
+    // 假设替换：在已选数组里把 old 换成候选（old 在同侧至多出现一次）
+    const swapped = (isR?rad:dire).map(v=>v===old?h.id:v);
+    const after = computeEdges(isR?swapped:dire, isR?dire:swapped);
     // 改善：R方希望 net 升，D方希望 net 降
     const gain = isR ? (after.netEdge - base.netEdge) : (base.netEdge - after.netEdge);
     cands.push({
@@ -765,7 +902,7 @@ function showCandidates(side, pos){
   cands.sort((a,b)=>b.gain-a.gain);
   const top = cands.slice(0,8);
 
-  document.getElementById('candTitle').innerHTML = `替换 ${isR?'Radiant':'Dire'} 第${pos+1}位 <b>${hname(old)}</b>（当前 net ${base.netEdge>=0?'+':''}${base.netEdge.toFixed(3)}）`;
+  document.getElementById('candTitle').innerHTML = `替换 ${isR?'天辉':'夜魇'} 第${pos+1}位 <b>${hname(old)}</b>（当前 net ${base.netEdge>=0?'+':''}${base.netEdge.toFixed(3)}）`;
   const list = document.getElementById('candList');
   list.innerHTML='';
   top.forEach((c,i)=>{
@@ -925,8 +1062,10 @@ document.getElementById('matchSelect').onchange=e=>{
   if(e.target.value){ document.getElementById('matchInput').value=''; loadMatch(e.target.value); }
 };
 document.getElementById('randomBtn').onclick=()=>{
-  const keys=Object.keys(ROSTERS);
-  const mid=keys[Math.floor(Math.random()*keys.length)];
+  // 随机一场 TI 比赛（与下拉框同一口径，需求①）；无 TI 数据时回退全部
+  const ti = tiMatches();
+  const pool = ti.length ? ti : Object.keys(ROSTERS).map(k=>({k}));
+  const mid = pool[Math.floor(Math.random()*pool.length)].k;
   document.getElementById('matchInput').value=mid;
   document.getElementById('matchSelect').value='';
   loadMatch(mid);
@@ -937,8 +1076,8 @@ document.getElementById('wA').oninput=e=>{W.a=parseFloat(e.target.value);documen
 document.getElementById('wB').oninput=e=>{W.b=parseFloat(e.target.value);document.getElementById('wBv').textContent=W.b.toFixed(1);renderEdges();};
 document.getElementById('wC').oninput=e=>{W.c=parseFloat(e.target.value);document.getElementById('wCv').textContent=W.c.toFixed(1);renderEdges();};
 document.getElementById('resetW').onclick=()=>{
-  W.a=W.b=W.c=1;
-  ['wA','wB','wC'].forEach((id,i)=>{document.getElementById(id).value=1;document.getElementById(id+'v').textContent='1.0';});
+  W.a=1; W.b=0.4; W.c=1;
+  [['wA',1],['wB',0.4],['wC',1]].forEach(([id,v])=>{document.getElementById(id).value=v;document.getElementById(id+'v').textContent=v.toFixed(1);});
   renderEdges();
 };
 
@@ -959,33 +1098,48 @@ document.getElementById('clearOvBtn').onclick=()=>{
   }
 };
 
-/* 下拉框填充：仅保留"两队都是 TI 战队"的对战。每场显示 "队名 vs 队名 · 联赛简称"，值=match_id */
+/* ============================== 比赛下拉：只呈现 TI 正赛（需求①） ============================== */
+// TI 正赛判定：league_name 以 "The International" 开头且不含 "Qualifier"（排除各赛区预选）
+function isTiLeague(lg){ lg=lg||''; return lg.indexOf('The International')===0 && lg.indexOf('Qualifier')<0; }
+function tiMatches(){
+  return Object.keys(ROSTERS)
+    .map(k=>({k, r:ROSTERS[k]}))
+    .filter(x=>isTiLeague(x.r.league_name))
+    .sort((a,b)=>a.r.start_time-b.r.start_time);
+}
+// 联赛名缩短：The International 2026 → TI2026 正赛
+function leagueShort(lg){
+  if(!lg) return '';
+  return lg.replace(/^The International (\d{4})$/, 'TI$1 正赛');
+}
 (function fillSelect(){
   const sel = document.getElementById('matchSelect');
   const frag = document.createDocumentFragment();
-  let tiCount = 0;
-  Object.keys(ROSTERS).forEach(k=>{
-    const r = ROSTERS[k];
-    // 过滤：双方都必须在 TI 熟练度数据集中
-    if(!TEAMS[r.radiant_name] || !TEAMS[r.dire_name]) return;
-    tiCount++;
-    const lg = (r.league_name||'').slice(0,18);
+  const ti = tiMatches();
+  ti.forEach(({k, r})=>{
+    const dt = new Date(r.start_time*1000);
+    const mmdd = String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0');
     const opt = document.createElement('option');
     opt.value = k;
-    opt.textContent = `${r.radiant_name||'?'} vs ${r.dire_name||'?'} · ${lg} · ${k}`;
+    opt.textContent = `${r.radiant_name||'?'} vs ${r.dire_name||'?'} · ${leagueShort(r.league_name)} · ${mmdd} · ${k}`;
     frag.appendChild(opt);
   });
   sel.appendChild(frag);
   // 更新下拉框提示文案
   const placeholder = sel.querySelector('option[value=""]');
-  if(placeholder) placeholder.textContent = `— 从下拉框选择一场（TI 对战，共 ${tiCount} 场）—`;
+  if(placeholder) placeholder.textContent = ti.length
+    ? `— 从下拉框选择一场（TI 正赛，共 ${ti.length} 场）—`
+    : '— 从下拉框选择一场（当前数据无 TI 正赛）—';
 })();
 
 /* 初始化 */
 renderOvList();
-// 自动加载一场示例
-const firstMid=Object.keys(ROSTERS)[0];
-if(firstMid){ document.getElementById('matchInput').value=firstMid; loadMatch(firstMid); }
+// 自动加载一场示例：优先最近一场 TI 比赛（需求①）
+(function(){
+  const ti = tiMatches();
+  const firstMid = ti.length ? ti[ti.length-1].k : Object.keys(ROSTERS)[0];
+  if(firstMid){ document.getElementById('matchInput').value=firstMid; loadMatch(firstMid); }
+})();
 </script>
 </body>
 </html>
