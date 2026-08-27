@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#0f1419; --surface:#1a2029; --surface2:#232b38; --border:#2f3a4a;
-    --text:#e4e8ed; --muted:#8a94a6; --radiant:#e74c3c; --dire:#3498db;
+    --text:#e4e8ed; --muted:#8a94a6; --radiant:#f1c40f; --dire:#8e44ad;
     --pos:#2ecc71; --neg:#e74c3c; --accent:#f39c12;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -53,17 +53,16 @@
   .edge-net{background:linear-gradient(135deg,#2a3340,#1f2832);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-top:12px;text-align:center}
   .edge-net .lbl{font-size:11px;color:var(--accent);margin-bottom:2px}
   .edge-net .num{font-size:26px;font-weight:800}
-  .edge-net .num.pos{color:var(--pos)} .edge-net .num.neg{color:var(--neg)}
+  .edge-net .num.pos{color:var(--radiant)} .edge-net .num.neg{color:var(--dire)}
   .edge-net .who{font-size:13px;margin-top:2px;color:var(--text)}
   .edges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
   .edge-cell{background:var(--surface2);border-radius:6px;padding:8px}
   .edge-cell .lbl{font-size:11px;color:var(--muted);margin-bottom:4px}
   .edge-cell .num{font-size:18px;font-weight:700}
-  .edge-cell .num.pos{color:var(--pos)} .edge-cell .num.neg{color:var(--neg)}
+  .edge-cell .num.pos{color:var(--radiant)} .edge-cell .num.neg{color:var(--dire)}
   .contributors{margin-top:6px;font-size:10px;color:var(--muted);line-height:1.5;max-height:80px;overflow-y:auto}
   .contributors .cb{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .contributors .cb .v{color:var(--text);font-weight:600}
-  .contributors .cb .v.pos{color:var(--pos)} .contributors .cb .v.neg{color:var(--neg)}
 
   /* 净优势分解表（分量/计算/数值，替代对照图） */
   .vs-table{width:100%;margin-top:10px;background:var(--surface2);border-radius:6px;border-collapse:collapse;font-size:12px}
@@ -183,7 +182,7 @@
 <body>
 
 <h1>BP 分析辅助 — 两两关系矩阵</h1>
-<div class="hint muted" id="metaHint">矩阵：对角=单点强度(胜率偏离50%)、同队上三角=协同(正=契合)、跨队格一律"行克列"（左下块=天辉克夜魇，右上块=夜魇克天辉，两个方向都可见）。单元格右上角 +/- 按钮微调（功能⑥）。阵容不全时，矩阵与净优势按已选英雄实时计算。</div>
+<div class="hint muted" id="metaHint">矩阵：对角=单点强度(胜率偏离50%)、同队上三角=协同(正=契合)、跨队格一律"行克列"（右上块=天辉克夜魇，左下块=夜魇克天辉，两个方向都可见）。单元格右上角 +/- 按钮微调（功能⑥）。阵容不全时，矩阵与净优势按已选英雄实时计算。</div>
 
 <!-- 功能① 输入比赛号 -->
 <div class="panel">
@@ -209,7 +208,7 @@
       <span><span class="sw" style="background:#2166ac"></span>负(互斥/被克)</span>
       <span><span class="sw" style="background:#f7f7f7"></span>中性 0</span>
       <span><span class="sw" style="background:#b2182b"></span>正(契合/克制)</span>
-      <span class="muted">| 同队上三角=协同(正=契合) · 跨队格一律行克列：左下=天辉克夜魇、右上=夜魇克天辉 · 对角=强度 · 悬停 +/- 微调</span>
+      <span class="muted">| 同队上三角=协同(正=契合) · 跨队格一律行克列：右上=天辉克夜魇、左下=夜魇克天辉 · 对角=强度 · 悬停 +/- 微调</span>
     </div>
     <div id="matrixGrid" class="mgrid"></div>
   </div>
@@ -256,6 +255,7 @@
     <div class="num" id="netE">—</div>
     <div class="who" id="netWho">—</div>
   </div>
+  <div class="hint" style="margin-top:6px;font-size:10px">数值颜色 = 受益方：<span style="color:var(--radiant);font-weight:600">黄 = 天辉有利</span> · <span style="color:var(--dire);font-weight:600">紫 = 夜魇有利</span>（三个分量正值均为天辉方向；贡献项看 [标签]，负值 = 利好对方）</div>
   <div class="edges">
     <div class="edge-cell">
       <div class="lbl">协同 syn_edge <span class="muted" style="font-size:10px">(同队契合)</span></div>
@@ -634,14 +634,15 @@ function renderEdges(){
     ? `<b>阵容不完整（R:${rc}/5, D:${dc}/5）· 按已选英雄实时评估：</b>${band}`
     : `<b>${band}</b>`;
 
-  // 列出影响变量（按绝对值降序，取 Top，正负分别标色）
+  // 列出影响变量（按绝对值降序，取 Top）。数值色=受益方：v≥0→标签方受益，v<0→对立方受益
+  const sideCss = s => s==='天辉' ? 'var(--radiant)' : 'var(--dire)';
+  const benCss = (own, v) => sideCss(v>=0 ? own : (own==='天辉'?'夜魇':'天辉'));
   const fmtPair = (p, label) => {
-    const cls = p.v>=0?'pos':'neg';
-    return `<span class="cb">[${p.side||p.dir}] ${hname(p.a)}×${hname(p.b)} <span class="v ${cls}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
+    const own = p.dir ? (p.dir.charAt(0)==='天'?'天辉':'夜魇') : p.side;
+    return `<span class="cb">[${p.side||p.dir}] ${hname(p.a)}×${hname(p.b)} <span class="v" style="color:${benCss(own, p.v)}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
   };
   const fmtItem = (p) => {
-    const cls = p.v>=0?'pos':'neg';
-    return `<span class="cb">[${p.side}] ${hname(p.h)} <span class="v ${cls}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
+    return `<span class="cb">[${p.side}] ${hname(p.h)} <span class="v" style="color:${benCss(p.side, p.v)}">${p.v>=0?'+':''}${p.v.toFixed(3)}</span></span>`;
   };
   // 协同：每对显示（R为正贡献，D为负贡献，已含在 synEdge 里）
   const synSorted = e.synPairs.slice().sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)).slice(0,8);
@@ -655,7 +656,7 @@ function renderEdges(){
   renderVsTable(e, rc, dc);
 }
 
-/* 净优势分解表：分量/计算/数值——双方各多少、谁克制谁多、平均胜率，天辉红/夜魇蓝 */
+/* 净优势分解表：分量/计算/数值——双方各多少、谁克制谁多、平均胜率，天辉黄/夜魇紫 */
 function renderVsTable(e, nR, nD){
   const el = document.getElementById('vsTable');
   if(!el) return;
@@ -690,12 +691,12 @@ function renderMatrix(){
     return;
   }
   // 阵容不全时也渲染：矩阵行列=当前已选英雄（需求③）
-  // 阵营顺序：D 在前、R 在后
-  // → 同队对：上三角=协同(左上D块/右下R块)，下三角镜像留空（协同对称，一数即可）
-  // → 跨队对：一律"行克列"——左下块=R行D列(天辉克夜魇)，右上块=D行R列(夜魇克天辉)
+  // 阵营顺序：R 在前、D 在后
+  // → 同队对：上三角=协同(左上R块/右下D块)，下三角镜像留空（协同对称，一数即可）
+  // → 跨队对：一律"行克列"——右上块=R行D列(天辉克夜魇)，左下块=D行R列(夜魇克天辉)
   //   两个方向各有其格，A克B与B克A都能看到
-  const heroes = [...dire, ...rad];
-  const sd = [...dire.map(()=>'D'), ...rad.map(()=>'R')];
+  const heroes = [...rad, ...dire];
+  const sd = [...rad.map(()=>'R'), ...dire.map(()=>'D')];
   const n = heroes.length;
   const CELL = 60;       // 单元格像素
   const HEAD = 56;       // 表头(图标+名)像素
@@ -721,7 +722,7 @@ function renderMatrix(){
   grid.style.gridTemplateColumns = `${HEAD}px repeat(${n}, ${CELL}px)`;
   grid.style.gridTemplateRows = `${HEAD}px repeat(${n}, ${CELL}px)`;
 
-  // 单元格取值逻辑：跨队格一律"行克列"（有序，a=行=克方），左下=天辉克夜魇、右上=夜魇克天辉
+  // 单元格取值逻辑：跨队格一律"行克列"（有序，a=行=克方），右上=天辉克夜魇、左下=夜魇克天辉
   function cellInfo(i, j){  // i,j 是英雄索引(0-based)
     if(i===j) return {type:'power', v:powerVal(heroes[i]), a:heroes[i]};  // a=hero_id, 覆盖键为单英雄
     if(sd[i]===sd[j]) return i<j
