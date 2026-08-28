@@ -196,7 +196,7 @@
   </div>
   <div class="row" style="margin-top:10px">
     <label>或输入 match_id：</label>
-    <input type="text" id="matchInput" placeholder="如 8753832993">
+    <input type="text" id="matchInput" placeholder="任意 match_id（本地没有时自动从 OpenDota 在线获取）">
     <span class="muted" id="matchInfo" style="margin-left:auto;font-size:12px"></span>
   </div>
 </div>
@@ -357,11 +357,12 @@ function cntVal(a,b){
   if(overrides.cnt[a+','+b]!==undefined) return overrides.cnt[a+','+b];
   return DATA.cnt[a+','+b] || 0;
 }
-/* power：覆盖存的是覆盖后的 power 值（baseline-0.5）；无覆盖则用计算值 */
+/* power：覆盖存的是覆盖后的 power 值（baseline-0.5）；无覆盖则用计算值；未知英雄按中性 0（在线获取的老场次可能含本地英雄表之外的英雄） */
 function powerVal(h){
   const k=String(h);
   if(overrides.power[k]!==undefined) return overrides.power[k];
-  return (HEROES[h].baseline - 0.5);
+  const info=HEROES[h];
+  return info ? (info.baseline - 0.5) : 0;
 }
 
 /* ============================== 状态机 ============================== */
@@ -1050,14 +1051,52 @@ function importOverrides(file){
   reader.readAsText(file);
 }
 
+/* ============================== OpenDota 在线获取 ============================== */
+/* 本地索引没有的 match_id → 调 OpenDota 公开 API 拉取（支持跨域、免密钥；免费额度 60 次/分） */
+function normalizeApiMatch(m){
+  const pb = (m.picks_bans || []).slice().sort((a,b)=>(a.order||0)-(b.order||0));
+  const rad = pb.filter(p=>p.is_pick && p.team===0).map(p=>p.hero_id);
+  const dire = pb.filter(p=>p.is_pick && p.team===1).map(p=>p.hero_id);
+  if(rad.length!==5 || dire.length!==5) return null;   // 非队长模式 / 无 BP 数据
+  return {
+    radiant: rad, dire,
+    radiant_bans: pb.filter(p=>!p.is_pick && p.team===0).map(p=>p.hero_id),
+    dire_bans: pb.filter(p=>!p.is_pick && p.team===1).map(p=>p.hero_id),
+    radiant_name: m.radiant_name || '?',
+    dire_name: m.dire_name || '?',
+    league_name: (m.league && m.league.name) || '未知赛事',
+    radiant_win: !!m.radiant_win,
+    start_time: m.start_time || 0,
+  };
+}
+async function loadMatchSmart(mid){
+  mid = String(mid==null?'':mid).trim();
+  if(!mid){ setMatchInfo('请输入或选择比赛 match_id'); return; }
+  if(ROSTERS[mid]){ loadMatch(mid); return; }   // 本地命中,直接加载
+  setMatchInfo(`⏳ 本地索引无此场（${mid}），正在从 OpenDota 在线获取...`);
+  try{
+    const resp = await fetch(`https://api.opendota.com/api/matches/${encodeURIComponent(mid)}`);
+    if(resp.status===404) throw new Error('OpenDota 无此 match_id');
+    if(resp.status===429) throw new Error('触发限流（免费额度 60 次/分），稍后再试');
+    if(!resp.ok) throw new Error(`OpenDota 返回 HTTP ${resp.status}`);
+    const r = normalizeApiMatch(await resp.json());
+    if(!r) throw new Error('该场次无完整 BP 数据（非队长模式或未收录）');
+    ROSTERS[mid] = r;   // 内存缓存，重复输入秒开（刷新页面即失效）
+    loadMatch(mid);
+    document.getElementById('matchInfo').textContent += ' · 来源:OpenDota 在线';
+  }catch(err){
+    setMatchInfo(`✗ 在线获取失败：${err.message}（match_id="${mid}"）。请核对 ID 后重试。`);
+  }
+}
+
 /* ============================== 事件绑定 ============================== */
 document.getElementById('loadBtn').onclick=()=>{
   const sel = document.getElementById('matchSelect');
   const inp = document.getElementById('matchInput').value.trim();
-  // 下拉框优先，其次输入框
+  // 下拉框优先，其次输入框；本地没有的场次自动走 OpenDota 在线获取
   const mid = sel.value || inp;
   if(!mid){ setMatchInfo('请从下拉框选择，或在输入框填写 match_id'); return; }
-  loadMatch(mid);
+  loadMatchSmart(mid);
 };
 document.getElementById('matchSelect').onchange=e=>{
   if(e.target.value){ document.getElementById('matchInput').value=''; loadMatch(e.target.value); }
@@ -1071,7 +1110,7 @@ document.getElementById('randomBtn').onclick=()=>{
   document.getElementById('matchSelect').value='';
   loadMatch(mid);
 };
-document.getElementById('matchInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ document.getElementById('matchSelect').value=''; loadMatch(document.getElementById('matchInput').value); } });
+document.getElementById('matchInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ document.getElementById('matchSelect').value=''; loadMatchSmart(document.getElementById('matchInput').value); } });
 
 document.getElementById('wA').oninput=e=>{W.a=parseFloat(e.target.value);document.getElementById('wAv').textContent=W.a.toFixed(1);renderEdges();};
 document.getElementById('wB').oninput=e=>{W.b=parseFloat(e.target.value);document.getElementById('wBv').textContent=W.b.toFixed(1);renderEdges();};
